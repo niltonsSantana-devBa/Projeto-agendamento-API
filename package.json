@@ -1,0 +1,25 @@
+{
+  "name": "projeto-de-agendamento-",
+  "version": "1.0.0",
+  "description": "Este é o banco de dados e backend para um sistema de agendamentos focado em escritórios e clínicas de arquitetura. O sistema permite gerenciar clientes, arquitetos, serviços oferecidos e os agendamentos das visitas (seja online, no escritório ou na obra).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niltonsSantana-devBa/Projeto-de-agendamento-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/niltonsSantana-devBa/Projeto-de-agendamento-/issues"
+  },
+  "homepage": "https://github.com/niltonsSantana-devBa/Projeto-de-agendamento-#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "mysql2": "^3.22.1"
+  }
+}
