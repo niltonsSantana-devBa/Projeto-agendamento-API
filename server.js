@@ -1,6 +1,5 @@
-require('dotenv').config();
 const express = require('express');
-const mysql = require('mysql2');
+const mysql = require('mysql2'); 
 
 const app = express();
 const porta = 3000;
@@ -9,10 +8,10 @@ app.use(express.json());
 
 
 const conexao = mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    host: 'localhost', 
+    user: 'root',     
+    password: 'NILton@1112',      
+    database: 'mydb'   
 });
 
 
@@ -30,7 +29,6 @@ app.get('/', (req, res) => {
 });
 
 
-const porta = process.env.PORT || 3000;
 app.listen(porta, () => {
     console.log(`🌐 Servidor rodando bonitão em http://localhost:${porta}`);
 });
