@@ -8,21 +8,25 @@ const porta = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static('public'));
 
-// Configuração da conexão com o banco de dados usando variáveis de ambiente
-const conexao = mysql.createConnection({
+// Configuração do pool de conexões com o banco de dados
+const conexao = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE
+    database: process.env.DB_DATABASE,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-// Conectar ao banco de dados
-conexao.connect((erro) => {
+// Verificar conexão com o banco de dados ao iniciar
+conexao.getConnection((erro, conn) => {
     if (erro) {
         console.error(' Erro ao conectar com o banco de dados:', erro);
         return;
     }
-    console.log(' Conectado ao banco de dados MySQL com sucesso! ');
+    console.log(' Conectado ao banco de dados MySQL com sucesso! (Pool ativo)');
+    conn.release();
 });
 
 // Rota inicial
@@ -60,7 +64,7 @@ app.get('/profissionais', (req, res) => {
 
 // Listar todos os serviços
 app.get('/servicos', (req, res) => {
-    const comandoSql = 'SELECT * FROM servicos';
+    const comandoSql = "SELECT * FROM `servi\u00e7os`";
     conexao.query(comandoSql, (erro, resultados) => {
         if (erro) {
             console.error(' Erro ao buscar os serviços:', erro);
@@ -73,20 +77,15 @@ app.get('/servicos', (req, res) => {
 
 // Listar todos os agendamentos
 app.get('/agendamentos', (req, res) => {
-    const comandoSql = `
-        SELECT 
-            a.id, 
-            c.nome AS cliente, 
-            p.nome AS profissional, 
-            s.nome AS servico, 
-            a.data_hora, 
-            a.status, 
-            a.modalidade
-        FROM agendamentos a
-        JOIN clientes c ON a.cliente_id = c.id
-        JOIN profissionais p ON a.profissional_id = p.id
-        JOIN servicos s ON a.servico_id = s.id
-    `;
+    const comandoSql =
+        'SELECT a.id, c.nome AS cliente, p.nome AS profissional, ' +
+        's.nome AS servico, a.data_hora, a.status, a.criado_em ' +
+        'FROM agendamentos a ' +
+        'JOIN clientes c ON a.cliente_id = c.id ' +
+        'JOIN profissionais p ON a.profissional_id = p.id ' +
+        'JOIN `servi\u00e7os` s ON a.servico_id = s.id';
+
+
     conexao.query(comandoSql, (erro, resultados) => {
         if (erro) {
             console.error(' Erro ao buscar os agendamentos:', erro);
