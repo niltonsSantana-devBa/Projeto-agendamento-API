@@ -2,10 +2,10 @@
   "name": "projeto-de-agendamento-",
   "version": "1.0.0",
   "description": "Este é o banco de dados e backend para um sistema de agendamentos focado em escritórios e clínicas de arquitetura. O sistema permite gerenciar clientes, arquitetos, serviços oferecidos e os agendamentos das visitas (seja online, no escritório ou na obra).",
-  "main": "src/index.js",
+  "main": "scr/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
+    "start": "node scr/index.js",
+    "dev": "node --watch scr/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
