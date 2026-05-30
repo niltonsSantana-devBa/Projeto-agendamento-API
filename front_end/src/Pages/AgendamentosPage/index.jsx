@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import api from '../../services/api';
-import '../ClientesPage/style.css'; // Reutilizando os estilos
+import './style.css';
 
 function AgendamentosPage() {
   const [agendamentos, setAgendamentos] = useState([]);
@@ -34,16 +36,18 @@ function AgendamentosPage() {
   const onSubmit = async (data) => {
     try {
       await api.post('/agendamentos', data);
+      toast.success("Agendamento criado com sucesso!");
       reset();
       carregarDados();
     } catch (error) {
       console.error("Erro ao cadastrar agendamento", error);
-      alert("Erro ao cadastrar agendamento.");
+      toast.error("Erro ao cadastrar agendamento. Verifique os dados.");
     }
   };
 
   return (
     <div className="page-container">
+      <ToastContainer position="top-right" autoClose={3000} />
       <h2>Gerenciar Agendamentos</h2>
       
       <div className="form-container">

@@ -40,6 +40,7 @@ O sistema é voltado para escritórios de arquitetura que precisam gerenciar:
 | Sequelize | v6 | ORM (Object-Relational Mapper) para gerenciar o banco de dados |
 | MySQL2 | v3 | Driver de conexão com o banco de dados MySQL |
 | CORS | v2 | Permite que o frontend acesse a API de outra origem |
+| Helmet | v8 | Middleware de segurança HTTP (headers, XSS, clickjacking) |
 | Dotenv | v17 | Carrega as variáveis de ambiente do arquivo `.env` |
 
 ### Frontend
@@ -59,6 +60,10 @@ O sistema é voltado para escritórios de arquitetura que precisam gerenciar:
 
 ```
 Projeto-agendamento-API/
+│
+├── database/                  # Scripts SQL do banco de dados
+│   ├── schema.sql             # CREATE TABLE de todas as tabelas (compatível com Sequelize)
+│   └── seed.sql               # Dados de exemplo para desenvolvimento
 │
 ├── back_and/                  # Pasta do Backend (API REST)
 │   ├── scr/
@@ -85,8 +90,13 @@ Projeto-agendamento-API/
 │   │   │   ├── ClientesPage/
 │   │   │   │   ├── index.jsx  # Formulário de cadastro + Tabela listando clientes
 │   │   │   │   └── style.css  # Estilos compartilhados (formulários e tabelas)
+│   │   │   ├── ProfissionaisPage/
+│   │   │   │   └── index.jsx  # Formulário de cadastro + Tabela de profissionais
+│   │   │   ├── ServicosPage/
+│   │   │   │   └── index.jsx  # Formulário de cadastro + Tabela de serviços
 │   │   │   └── AgendamentosPage/
-│   │   │       └── index.jsx  # Formulário de agendamento + Tabela com agendamentos
+│   │   │       ├── index.jsx  # Formulário de agendamento + Tabela com agendamentos
+│   │   │       └── style.css  # Estilos próprios da página
 │   │   ├── services/
 │   │   │   └── api.js         # Configuração do Axios: define a URL base da API
 │   │   ├── App.jsx            # Componente raiz: configura as rotas e o layout geral
@@ -212,24 +222,32 @@ O backend roda na porta `3000` e expõe os seguintes endpoints:
 |---|---|---|---|
 | `GET` | `/clientes` | Retorna a lista de todos os clientes | — |
 | `POST` | `/clientes` | Cadastra um novo cliente | `{ "nome": "", "email": "", "telefone": "" }` |
+| `PUT` | `/clientes/:id` | Atualiza os dados de um cliente | `{ "nome": "", "email": "", "telefone": "" }` |
+| `DELETE` | `/clientes/:id` | Remove um cliente | — |
 
 ### Profissionais
 | Método | Rota | Descrição | Body (JSON) |
 |---|---|---|---|
 | `GET` | `/profissionais` | Retorna a lista de todos os profissionais | — |
 | `POST` | `/profissionais` | Cadastra um novo profissional | `{ "nome": "", "especialidade": "" }` |
+| `PUT` | `/profissionais/:id` | Atualiza os dados de um profissional | `{ "nome": "", "especialidade": "" }` |
+| `DELETE` | `/profissionais/:id` | Remove um profissional | — |
 
 ### Serviços
 | Método | Rota | Descrição | Body (JSON) |
 |---|---|---|---|
 | `GET` | `/servicos` | Retorna o catálogo de serviços | — |
 | `POST` | `/servicos` | Cadastra um novo serviço | `{ "nome": "", "descricao": "", "preco": 0.00 }` |
+| `PUT` | `/servicos/:id` | Atualiza os dados de um serviço | `{ "nome": "", "descricao": "", "preco": 0.00 }` |
+| `DELETE` | `/servicos/:id` | Remove um serviço | — |
 
 ### Agendamentos
 | Método | Rota | Descrição | Body (JSON) |
 |---|---|---|---|
 | `GET` | `/agendamentos` | Retorna todos os agendamentos com dados de Cliente, Profissional e Serviço incluídos | — |
 | `POST` | `/agendamentos` | Cria um novo agendamento | `{ "data": "2026-01-01T10:00", "status": "pendente", "ClienteId": 1, "ProfissionalId": 1, "ServicoId": 1 }` |
+| `PUT` | `/agendamentos/:id` | Atualiza os dados de um agendamento | `{ "data": "", "status": "", "ClienteId": 1, "ProfissionalId": 1, "ServicoId": 1 }` |
+| `DELETE` | `/agendamentos/:id` | Remove um agendamento | — |
 
 ---
 
@@ -238,7 +256,7 @@ O backend roda na porta `3000` e expõe os seguintes endpoints:
 ### Componentes Reutilizáveis (`src/components/`)
 
 #### `Header` (`components/Header/index.jsx`)
-O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita: **Dashboard**, **Clientes** e **Agendamentos**. Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa.
+O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita: **Dashboard**, **Clientes**, **Profissionais**, **Serviços** e **Agendamentos**. Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa.
 
 #### `Footer` (`components/Footer/index.jsx`)
 Rodapé simples exibido na base de todas as páginas com informações de copyright.
@@ -250,6 +268,8 @@ O arquivo `App.jsx` é o coração do frontend. Ele:
 3. Mapeia cada URL para o componente de página correspondente:
    - `/` → `<HomePage />`
    - `/clientes` → `<ClientesPage />`
+   - `/profissionais` → `<ProfissionaisPage />`
+   - `/servicos` → `<ServicosPage />`
    - `/agendamentos` → `<AgendamentosPage />`
 
 ### Serviço de API (`src/services/api.js`)
@@ -270,6 +290,16 @@ Ao ser renderizada, a página dispara 4 requisições `GET` simultâneas para a 
 Dividida em duas seções:
 1. **Formulário de Cadastro**: Campos de Nome, E-mail e Telefone. Gerenciado pelo `react-hook-form`. Ao submeter, faz um `POST /clientes` e recarrega a lista automaticamente.
 2. **Tabela de Clientes**: Lista todos os clientes em uma tabela com colunas ID, Nome, Email e Telefone. Puxada via `GET /clientes` ao carregar a página.
+
+#### `ProfissionaisPage` (rota `/profissionais`)
+Dividida em duas seções:
+1. **Formulário de Cadastro**: Campos de Nome e Especialidade. Ao submeter, faz um `POST /profissionais` e recarrega a lista.
+2. **Tabela de Profissionais**: Lista todos os profissionais cadastrados com colunas ID, Nome e Especialidade.
+
+#### `ServicosPage` (rota `/servicos`)
+Dividida em duas seções:
+1. **Formulário de Cadastro**: Campos de Nome, Descrição e Preço. Ao submeter, faz um `POST /servicos` e recarrega a lista.
+2. **Tabela de Serviços**: Lista todos os serviços cadastrados com colunas ID, Nome, Descrição e Preço.
 
 #### `AgendamentosPage` (rota `/agendamentos`)
 Dividida em duas seções:

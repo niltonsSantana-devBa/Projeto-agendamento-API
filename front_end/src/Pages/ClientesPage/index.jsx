@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import api from '../../services/api';
-import './style.css'; // Vamos criar um estilo básico
+import './style.css';
 
 function ClientesPage() {
   const [clientes, setClientes] = useState([]);
@@ -23,16 +25,18 @@ function ClientesPage() {
   const onSubmit = async (data) => {
     try {
       await api.post('/clientes', data);
-      reset(); // Limpa o formulário
-      carregarClientes(); // Recarrega a lista
+      toast.success("Cliente cadastrado com sucesso!");
+      reset();
+      carregarClientes();
     } catch (error) {
       console.error("Erro ao cadastrar cliente", error);
-      alert("Erro ao cadastrar. O email já pode existir.");
+      toast.error("Erro ao cadastrar. Verifique os dados e tente novamente.");
     }
   };
 
   return (
     <div className="page-container">
+      <ToastContainer position="top-right" autoClose={3000} />
       <h2>Gerenciar Clientes</h2>
       
       <div className="form-container">
