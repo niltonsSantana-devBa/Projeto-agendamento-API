@@ -5,16 +5,18 @@ const helmet = require('helmet');
 const { Sequelize, DataTypes } = require('sequelize');
 
 // --- 1. CONFIGURAÇÃO DA CONEXÃO COM O BANCO DE DADOS ---
-const sequelize = new Sequelize(
-    process.env.DB_DATABASE || 'mydb',
-    process.env.DB_USER || 'root',
-    process.env.DB_PASSWORD || '',
-    {
-        host: process.env.DB_HOST || 'localhost',
-        dialect: 'mysql',
-        logging: false
-    }
-);
+const sequelize = process.env.DATABASE_URL
+    ? new Sequelize(process.env.DATABASE_URL, { dialect: 'mysql', logging: false })
+    : new Sequelize(
+        process.env.DB_DATABASE || 'mydb',
+        process.env.DB_USER || 'root',
+        process.env.DB_PASSWORD || '',
+        {
+            host: process.env.DB_HOST || 'localhost',
+            dialect: 'mysql',
+            logging: false
+        }
+    );
 
 // --- 2. DEFINIÇÃO DOS MODELOS (TABELAS) ---
 const Cliente = sequelize.define('Cliente', {
@@ -49,7 +51,8 @@ Agendamento.belongsTo(Servico);
 
 // --- 3. CONFIGURAÇÃO DO SERVIDOR EXPRESS ---
 const app = express();
-app.use(cors());
+const corsOrigins = process.env.CORS_ORIGIN || 'http://localhost:5173';
+app.use(cors({ origin: corsOrigins.split(','), credentials: true }));
 app.use(helmet());
 app.use(express.json());
 

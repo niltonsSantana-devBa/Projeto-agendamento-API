@@ -377,4 +377,35 @@ PORT=3000
 
 ---
 
+## ☁️ Deploy na Nuvem
+
+O projeto está preparado para deploy em duas plataformas gratuitas:
+
+### Railway (Backend + MySQL)
+
+1. Crie uma conta em [railway.app](https://railway.app)
+2. Clique em **New Project** → **Deploy from GitHub repo**
+3. Selecione o repositório e a pasta `back_and/`
+4. Railway detecta automaticamente Node.js e `npm start`
+5. Adicione um banco MySQL: **New** → **Database** → **MySQL**
+6. Nas variáveis de ambiente do backend, a Railway injeta automaticamente `DATABASE_URL` (o backend já está configurado para usá-la)
+7. Após o deploy, o Railway fornece uma URL como `https://backend-production.up.railway.app`
+
+### Vercel (Frontend)
+
+1. Crie uma conta em [vercel.app](https://vercel.app)
+2. Clique em **Add New** → **Project**
+3. Importe o repositório GitHub
+4. Configure:
+   - **Root Directory:** `front_end`
+   - **Build Command:** `npm run build`
+   - **Output Directory:** `dist`
+5. Adicione a variável de ambiente:
+   - `VITE_API_URL`: a URL do backend no Railway (ex: `https://backend-production.up.railway.app`)
+6. Clique em **Deploy**
+
+> O `vercel.json` já está configurado para roteamento SPA.
+
+---
+
 Desenvolvido como parte do projeto interdisciplinar SENAI.
