@@ -28,6 +28,15 @@ O sistema é voltado para escritórios de arquitetura que precisam gerenciar:
 - **Serviços**: O catálogo de serviços oferecidos.
 - **Agendamentos**: O registro das visitas marcadas, vinculando as três entidades acima.
 
+### 🌐 Fluxo Público (novo)
+
+O sistema também possui uma interface pública onde:
+1. **Clientes** acessam a página `/arquitetos` para ver os profissionais disponíveis e seus serviços
+2. **Clientes** clicam em "Agendar" e são levados ao formulário em `/agendar`
+3. No formulário, preenchem seus dados (nome, email, telefone), escolhem o profissional, o serviço e a data/hora
+4. O sistema automaticamente cria o cliente (se não existir) e registra o agendamento com status "pendente"
+5. **Administradores** veem os novos agendamentos na página `/agendamentos` e podem confirmar ou cancelar
+
 ---
 
 ## 🛠️ Tecnologias Utilizadas
@@ -65,6 +74,8 @@ Projeto-agendamento-API/
 │   ├── schema.sql             # CREATE TABLE de todas as tabelas (compatível com Sequelize)
 │   └── seed.sql               # Dados de exemplo para desenvolvimento
 │
+├── DEPLOY.md                  # Guia passo a passo para deploy na nuvem
+│
 ├── back_and/                  # Pasta do Backend (API REST)
 │   ├── scr/
 │   │   └── index.js           # Arquivo principal: contém toda a lógica do servidor,
@@ -87,6 +98,10 @@ Projeto-agendamento-API/
 │   │   ├── Pages/             # Telas completas da aplicação
 │   │   │   ├── HomePage/
 │   │   │   │   └── index.jsx  # Dashboard: exibe totais em cards (clientes, agendamentos...)
+│   │   │   ├── AgendarPage/        # ★ PÁGINA PÚBLICA
+│   │   │   │   └── index.jsx  # Formulário para cliente agendar online
+│   │   │   ├── ArquitetosPage/    # ★ PÁGINA PÚBLICA
+│   │   │   │   └── index.jsx  # Vitrine de arquitetos e serviços
 │   │   │   ├── ClientesPage/
 │   │   │   │   ├── index.jsx  # Formulário de cadastro + Tabela listando clientes
 │   │   │   │   └── style.css  # Estilos compartilhados (formulários e tabelas)
@@ -141,18 +156,21 @@ O projeto é dividido em duas partes independentes que se comunicam através de 
 [Frontend atualiza a tela com os dados recebidos]
 ```
 
-### Passo a Passo Detalhado
+### Fluxo do Administrador (Painel Interno)
 
-1. O usuário acessa `http://localhost:5173` no navegador.
-2. O Vite serve o arquivo `index.html`, que carrega o React via `main.jsx`.
-3. O React monta o componente `App.jsx`, que renderiza o `Header` (menu de navegação) e define as rotas (`/`, `/clientes`, `/agendamentos`).
-4. Quando o usuário navega para `/clientes`, o React renderiza o componente `ClientesPage` **sem recarregar a página** (isso é o React Router fazendo o seu trabalho).
-5. O componente `ClientesPage` tem um `useEffect` que, ao ser montado, chama a função `carregarClientes()`.
-6. Essa função usa o `Axios` (configurado em `services/api.js`) para fazer uma requisição `GET` para `http://localhost:3000/clientes`.
-7. O servidor Node.js recebe a requisição na rota `app.get('/clientes', ...)` e instrui o Sequelize a executar um `SELECT * FROM Clientes`.
-8. O banco de dados MySQL retorna os registros, o Sequelize os transforma em objetos JavaScript, e o Express os envia de volta como JSON.
-9. O Axios recebe o JSON e atualiza o state (`setClientes(response.data)`) do componente React.
-10. O React detecta a mudança no state e re-renderiza a tabela na tela com os dados recebidos.
+1. O administrador acessa `http://localhost:5173` e navega pelas rotas internas (`/clientes`, `/profissionais`, `/servicos`, `/agendamentos`).
+2. Cada página carrega dados da API via `useEffect` + `Axios` e exibe em tabelas.
+3. O administrador pode cadastrar clientes, profissionais, serviços e gerenciar os agendamentos (confirmar ou cancelar).
+
+### Fluxo Público (Cliente)
+
+1. O cliente acessa `http://localhost:5173/arquitetos` e vê a vitrine de arquitetos e serviços.
+2. Clica em **"Agendar"** em um serviço, que o leva para `/agendar?profissionalId=X&servicoId=Y`.
+3. Preenche nome, email, telefone, escolhe a data e submete o formulário.
+4. O frontend busca o cliente pelo email (`GET /clientes/email/:email`):
+   - Se não existir, cria um novo cliente (`POST /clientes`)
+5. Cria o agendamento com status "pendente" (`POST /agendamentos`).
+6. O administrador vê o novo agendamento na página `/agendamentos` e decide o status.
 
 ---
 
@@ -221,6 +239,7 @@ O backend roda na porta `3000` e expõe os seguintes endpoints:
 | Método | Rota | Descrição | Body (JSON) |
 |---|---|---|---|
 | `GET` | `/clientes` | Retorna a lista de todos os clientes | — |
+| `GET` | `/clientes/email/:email` | Busca um cliente pelo e-mail (usado no fluxo público) | — |
 | `POST` | `/clientes` | Cadastra um novo cliente | `{ "nome": "", "email": "", "telefone": "" }` |
 | `PUT` | `/clientes/:id` | Atualiza os dados de um cliente | `{ "nome": "", "email": "", "telefone": "" }` |
 | `DELETE` | `/clientes/:id` | Remove um cliente | — |
@@ -256,7 +275,7 @@ O backend roda na porta `3000` e expõe os seguintes endpoints:
 ### Componentes Reutilizáveis (`src/components/`)
 
 #### `Header` (`components/Header/index.jsx`)
-O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita: **Dashboard**, **Clientes**, **Profissionais**, **Serviços** e **Agendamentos**. Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa.
+O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita: **Dashboard**, **Clientes**, **Profissionais**, **Serviços**, **Agendamentos**, **Arquitetos** e **Agendar**. Os links internos (Dashboard, Clientes, etc.) são para administradores; os links **Arquitetos** e **Agendar** são a interface pública para clientes. Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa.
 
 #### `Footer` (`components/Footer/index.jsx`)
 Rodapé simples exibido na base de todas as páginas com informações de copyright.
@@ -271,6 +290,8 @@ O arquivo `App.jsx` é o coração do frontend. Ele:
    - `/profissionais` → `<ProfissionaisPage />`
    - `/servicos` → `<ServicosPage />`
    - `/agendamentos` → `<AgendamentosPage />`
+   - `/arquitetos` → `<ArquitetosPage />` (página pública)
+   - `/agendar` → `<AgendarPage />` (página pública)
 
 ### Serviço de API (`src/services/api.js`)
 Instância configurada do Axios com a URL base do backend (`http://localhost:3000`). Todos os componentes importam este arquivo para fazer as requisições, garantindo que a URL da API fique em um lugar centralizado.
@@ -301,10 +322,33 @@ Dividida em duas seções:
 1. **Formulário de Cadastro**: Campos de Nome, Descrição e Preço. Ao submeter, faz um `POST /servicos` e recarrega a lista.
 2. **Tabela de Serviços**: Lista todos os serviços cadastrados com colunas ID, Nome, Descrição e Preço.
 
+#### `ArquitetosPage` (rota `/arquitetos`) — Página Pública
+Vitrine pública que lista todos os arquitetos (profissionais) cadastrados, exibindo seus nomes e especialidades. Abaixo de cada arquiteto, mostra os serviços disponíveis. Cada serviço tem um botão **"Agendar"** que leva o cliente direto para `/agendar?profissionalId=X&servicoId=Y`, pré-selecionando o arquiteto e o serviço.
+
+Funcionamento:
+1. Ao carregar, faz `GET /profissionais` e `GET /servicos` em paralelo.
+2. Filtra os serviços de cada profissional e exibe em cards.
+3. O botão "Agendar" usa `useSearchParams` para passar os IDs na URL.
+
+#### `AgendarPage` (rota `/agendar`) — Página Pública
+Formulário público para clientes agendarem uma visita. O cliente preenche:
+- **Nome**, **Email**, **Telefone**
+- **Profissional** (select populado via `GET /profissionais`)
+- **Serviço** (select populado via `GET /servicos`)
+- **Data e hora**
+
+Se o usuário veio da página `/arquitetos`, os selects de profissional e serviço já vêm pré-selecionados.
+
+Fluxo ao submeter:
+1. Tenta buscar o cliente pelo email via `GET /clientes/email/:email`
+2. Se não encontrar, cria um novo cliente com `POST /clientes`
+3. Cria o agendamento com `POST /agendamentos` (status = "pendente")
+4. Exibe toast de sucesso e limpa o formulário
+
 #### `AgendamentosPage` (rota `/agendamentos`)
 Dividida em duas seções:
 1. **Formulário de Agendamento**: Ao carregar, busca dados de Clientes, Profissionais e Serviços para popular os `<select>` (dropdowns). O usuário escolhe o cliente, o profissional, o serviço, a data/hora e o status. Ao submeter, faz um `POST /agendamentos`.
-2. **Tabela de Agendamentos**: Lista todos os agendamentos com as informações de cliente, profissional e serviço já expandidas (não mostra apenas o ID, mas o nome real de cada um).
+2. **Tabela de Agendamentos**: Lista todos os agendamentos com as informações de cliente, profissional e serviço já expandidas (não mostra apenas o ID, mas o nome real de cada um). Os administradores podem ver os agendamentos criados pelo fluxo público e alterar o status para "confirmado" ou "cancelado".
 
 ---
 

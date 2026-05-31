@@ -68,6 +68,18 @@ app.get('/clientes', async (req, res) => {
     } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// Buscar cliente por email (para agendamento público)
+app.get('/clientes/email/:email', async (req, res) => {
+    try {
+        const cliente = await Cliente.findOne({ where: { email: req.params.email } });
+        if (cliente) {
+            res.json(cliente);
+        } else {
+            res.status(404).json({ error: 'Cliente não encontrado' });
+        }
+    } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 app.post('/clientes', async (req, res) => {
     try {
         if (!req.body.nome || !req.body.email) {
