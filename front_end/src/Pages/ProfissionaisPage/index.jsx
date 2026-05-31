@@ -24,7 +24,12 @@ function ProfissionaisPage() {
 
   const onSubmit = async (data) => {
     try {
-      await api.post('/profissionais', data);
+      await api.post('/profissionais', {
+        nome: data.nome,
+        especialidade: data.especialidade,
+        telefone: data.telefone || null,
+        ativo: data.ativo !== undefined ? (data.ativo === 'true' || data.ativo === true ? 1 : 0) : 1
+      });
       toast.success("Profissional cadastrado com sucesso!");
       reset();
       carregarProfissionais();
@@ -50,6 +55,17 @@ function ProfissionaisPage() {
             <label>Especialidade</label>
             <input {...register('especialidade', { required: true })} placeholder="Ex: Design de Interiores" />
           </div>
+          <div className="input-group">
+            <label>Telefone</label>
+            <input {...register('telefone')} placeholder="(11) 99999-9999" />
+          </div>
+          <div className="input-group">
+            <label>Ativo</label>
+            <select {...register('ativo')} defaultValue="true">
+              <option value="true">Sim</option>
+              <option value="false">Não</option>
+            </select>
+          </div>
           <button type="submit" className="btn-salvar">Salvar Profissional</button>
         </form>
       </div>
@@ -62,6 +78,8 @@ function ProfissionaisPage() {
               <th>ID</th>
               <th>Nome</th>
               <th>Especialidade</th>
+              <th>Telefone</th>
+              <th>Ativo</th>
             </tr>
           </thead>
           <tbody>
@@ -70,11 +88,13 @@ function ProfissionaisPage() {
                 <td>{p.id}</td>
                 <td>{p.nome}</td>
                 <td>{p.especialidade}</td>
+                <td>{p.telefone || '-'}</td>
+                <td>{p.ativo ? 'Sim' : 'Não'}</td>
               </tr>
             ))}
             {profissionais.length === 0 && (
               <tr>
-                <td colSpan="3" style={{ textAlign: 'center' }}>Nenhum profissional cadastrado.</td>
+                <td colSpan="5" style={{ textAlign: 'center' }}>Nenhum profissional cadastrado.</td>
               </tr>
             )}
           </tbody>

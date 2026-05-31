@@ -7,27 +7,38 @@ import '../ClientesPage/style.css';
 
 function ServicosPage() {
   const [servicos, setServicos] = useState([]);
+  const [profissionais, setProfissionais] = useState([]);
   const { register, handleSubmit, reset } = useForm();
 
-  const carregarServicos = async () => {
+  const carregarDados = async () => {
     try {
-      const response = await api.get('/servicos');
-      setServicos(response.data);
+      const [resServicos, resProf] = await Promise.all([
+        api.get('/servicos'),
+        api.get('/profissionais')
+      ]);
+      setServicos(resServicos.data);
+      setProfissionais(resProf.data);
     } catch (error) {
-      console.error("Erro ao buscar serviços", error);
+      console.error("Erro ao buscar dados", error);
     }
   };
 
   useEffect(() => {
-    carregarServicos();
+    carregarDados();
   }, []);
 
   const onSubmit = async (data) => {
     try {
-      await api.post('/servicos', data);
+      await api.post('/servicos', {
+        nome: data.nome,
+        descricao: data.descricao,
+        preco: data.preco,
+        duracao_min: Number(data.duracao_min),
+        profissional_id: Number(data.profissional_id)
+      });
       toast.success("Serviço cadastrado com sucesso!");
       reset();
-      carregarServicos();
+      carregarDados();
     } catch (error) {
       console.error("Erro ao cadastrar serviço", error);
       toast.error("Erro ao cadastrar. Verifique os dados.");
@@ -54,6 +65,17 @@ function ServicosPage() {
             <label>Preço (R$)</label>
             <input type="number" step="0.01" {...register('preco', { required: true })} placeholder="Ex: 250.00" />
           </div>
+          <div className="input-group">
+            <label>Duração (minutos)</label>
+            <input type="number" {...register('duracao_min', { required: true })} placeholder="Ex: 60" defaultValue={60} />
+          </div>
+          <div className="input-group">
+            <label>Profissional</label>
+            <select {...register('profissional_id', { required: true })}>
+              <option value="">Selecione um profissional...</option>
+              {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome} - {p.especialidade}</option>)}
+            </select>
+          </div>
           <button type="submit" className="btn-salvar">Salvar Serviço</button>
         </form>
       </div>
@@ -67,6 +89,8 @@ function ServicosPage() {
               <th>Nome</th>
               <th>Descrição</th>
               <th>Preço</th>
+              <th>Duração</th>
+              <th>Profissional</th>
             </tr>
           </thead>
           <tbody>
@@ -76,11 +100,13 @@ function ServicosPage() {
                 <td>{s.nome}</td>
                 <td>{s.descricao || '-'}</td>
                 <td>R$ {parseFloat(s.preco).toFixed(2)}</td>
+                <td>{s.duracao_min}min</td>
+                <td>{s.profissional_nome || '-'}</td>
               </tr>
             ))}
             {servicos.length === 0 && (
               <tr>
-                <td colSpan="4" style={{ textAlign: 'center' }}>Nenhum serviço cadastrado.</td>
+                <td colSpan="6" style={{ textAlign: 'center' }}>Nenhum serviço cadastrado.</td>
               </tr>
             )}
           </tbody>

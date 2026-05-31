@@ -35,7 +35,13 @@ function AgendamentosPage() {
 
   const onSubmit = async (data) => {
     try {
-      await api.post('/agendamentos', data);
+      await api.post('/agendamentos', {
+        data_hora: data.data_hora,
+        cliente_id: Number(data.cliente_id),
+        servico_id: Number(data.servico_id),
+        status: data.status || 'pendente',
+        observacao: data.observacao || null
+      });
       toast.success("Agendamento criado com sucesso!");
       reset();
       carregarDados();
@@ -55,28 +61,25 @@ function AgendamentosPage() {
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="input-group">
             <label>Cliente</label>
-            <select {...register('ClienteId', { required: true })}>
+            <select {...register('cliente_id', { required: true })}>
               <option value="">Selecione um cliente...</option>
               {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
           </div>
           <div className="input-group">
-            <label>Profissional</label>
-            <select {...register('ProfissionalId', { required: true })}>
-              <option value="">Selecione um profissional...</option>
-              {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
-          </div>
-          <div className="input-group">
             <label>Serviço</label>
-            <select {...register('ServicoId', { required: true })}>
+            <select {...register('servico_id', { required: true })}>
               <option value="">Selecione um serviço...</option>
-              {servicos.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+              {servicos.map(s => <option key={s.id} value={s.id}>{s.nome} - {s.profissional_nome}</option>)}
             </select>
           </div>
           <div className="input-group">
             <label>Data e Hora</label>
-            <input type="datetime-local" {...register('data', { required: true })} />
+            <input type="datetime-local" {...register('data_hora', { required: true })} />
+          </div>
+          <div className="input-group">
+            <label>Observação</label>
+            <textarea {...register('observacao')} placeholder="Observações sobre o agendamento" />
           </div>
           <div className="input-group">
             <label>Status</label>
@@ -96,7 +99,7 @@ function AgendamentosPage() {
           <thead>
             <tr>
               <th>ID</th>
-              <th>Data</th>
+              <th>Data/Hora</th>
               <th>Cliente</th>
               <th>Profissional</th>
               <th>Serviço</th>
@@ -107,10 +110,10 @@ function AgendamentosPage() {
             {agendamentos.map(agenda => (
               <tr key={agenda.id}>
                 <td>{agenda.id}</td>
-                <td>{new Date(agenda.data).toLocaleString()}</td>
-                <td>{agenda.Cliente?.nome || 'N/A'}</td>
-                <td>{agenda.Profissional?.nome || 'N/A'}</td>
-                <td>{agenda.Servico?.nome || 'N/A'}</td>
+                <td>{new Date(agenda.data_hora).toLocaleString()}</td>
+                <td>{agenda.cliente_nome || 'N/A'}</td>
+                <td>{agenda.profissional_nome || 'N/A'}</td>
+                <td>{agenda.servico_nome || 'N/A'}</td>
                 <td>{agenda.status}</td>
               </tr>
             ))}

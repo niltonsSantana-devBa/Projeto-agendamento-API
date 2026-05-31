@@ -20,22 +20,22 @@
 
 ## 📖 Sobre o Projeto
 
-O AgendaFácil foi desenvolvido como um sistema fullstack com separação clara entre frontend (interface) e backend (API). A aplicação segue o modelo de Single Page Application (SPA) no frontend, onde a navegação acontece sem recarregar a página, e uma API RESTful no backend que se comunica com um banco de dados MySQL usando o ORM Sequelize.
+O AgendaFácil foi desenvolvido como um sistema fullstack com separação clara entre frontend (interface) e backend (API). A aplicação segue o modelo de Single Page Application (SPA) no frontend, onde a navegação acontece sem recarregar a página, e uma API RESTful no backend que se comunica com um banco de dados MySQL usando mysql2 puro.
 
 O sistema é voltado para escritórios de arquitetura que precisam gerenciar:
 - **Clientes**: Quem solicita os serviços.
 - **Profissionais**: Os arquitetos responsáveis pelas visitas.
-- **Serviços**: O catálogo de serviços oferecidos.
-- **Agendamentos**: O registro das visitas marcadas, vinculando as três entidades acima.
+- **Serviços**: O catálogo de serviços oferecidos (cada serviço pertence a um profissional).
+- **Agendamentos**: O registro das visitas marcadas, vinculando cliente e serviço (o profissional é definido pelo serviço).
+- **Usuários**: Contas de acesso para administradores (autenticação JWT).
 
-### 🌐 Fluxo Público (novo)
+### 🌐 Fluxo Público
 
-O sistema também possui uma interface pública onde:
-1. **Clientes** acessam a página `/arquitetos` para ver os profissionais disponíveis e seus serviços
-2. **Clientes** clicam em "Agendar" e são levados ao formulário em `/agendar`
-3. No formulário, preenchem seus dados (nome, email, telefone), escolhem o profissional, o serviço e a data/hora
-4. O sistema automaticamente cria o cliente (se não existir) e registra o agendamento com status "pendente"
-5. **Administradores** veem os novos agendamentos na página `/agendamentos` e podem confirmar ou cancelar
+1. **Clientes** acessam `/arquitetos` para ver os profissionais e serviços disponíveis
+2. Clicam em "Agendar" e são levados ao formulário em `/agendar`
+3. Preenchem dados pessoais, escolhem profissional → serviço (filtrados) → data/hora
+4. O sistema cria o cliente (se não existir) e registra o agendamento com status "pendente"
+5. **Administradores** logam em `/login` e gerenciam os agendamentos via `/agenda` (visão diária)
 
 ---
 
@@ -46,8 +46,9 @@ O sistema também possui uma interface pública onde:
 |---|---|---|
 | Node.js | LTS | Ambiente de execução JavaScript no servidor |
 | Express | v5 | Framework web para criação de rotas e API REST |
-| Sequelize | v6 | ORM (Object-Relational Mapper) para gerenciar o banco de dados |
-| MySQL2 | v3 | Driver de conexão com o banco de dados MySQL |
+| MySQL2 | v3 | Driver de conexão com o banco de dados MySQL (com pool de conexões) |
+| bcryptjs | v2 | Hash de senhas para autenticação |
+| JSON Web Token | v9 | Tokens de autenticação JWT |
 | CORS | v2 | Permite que o frontend acesse a API de outra origem |
 | Helmet | v8 | Middleware de segurança HTTP (headers, XSS, clickjacking) |
 | Dotenv | v17 | Carrega as variáveis de ambiente do arquivo `.env` |
@@ -77,11 +78,32 @@ Projeto-agendamento-API/
 ├── DEPLOY.md                  # Guia passo a passo para deploy na nuvem
 │
 ├── back_and/                  # Pasta do Backend (API REST)
-│   ├── scr/
-│   │   └── index.js           # Arquivo principal: contém toda a lógica do servidor,
-│   │                          #   a conexão com o banco, os Models e as Rotas (endpoints)
-│   ├── .env                   # Variáveis de ambiente (credenciais do banco de dados)
-│   ├── package.json           # Dependências e scripts do backend
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── database.js    # Pool de conexões mysql2
+│   │   ├── controllers/
+│   │   │   ├── clientes.controller.js
+│   │   │   ├── profissionais.controller.js
+│   │   │   ├── servicos.controller.js
+│   │   │   ├── agendamentos.controller.js
+│   │   │   └── auth.controller.js
+│   │   ├── routes/
+│   │   │   ├── clientes.routes.js
+│   │   │   ├── profissionais.routes.js
+│   │   │   ├── servicos.routes.js
+│   │   │   ├── agendamentos.routes.js
+│   │   │   └── auth.routes.js
+│   │   ├── middleware/
+│   │   │   └── auth.middleware.js  # Verificação de token JWT
+│   │   └── app.js                  # Configuração do Express + registro de rotas
+│   ├── database/               # Scripts SQL
+│   │   ├── schema.sql          # CREATE TABLE de todas as tabelas
+│   │   └── seed.sql            # Dados de exemplo
+│   ├── scripts/
+│   │   └── init-db.js          # Script para recriar o banco do zero
+│   ├── server.js               # Entry point (porta 3001)
+│   ├── .env                    # Variáveis de ambiente
+│   ├── package.json            # Dependências e scripts do backend
 │   └── package-lock.json
 │
 ├── front_end/                 # Pasta do Frontend (React + Vite)
@@ -158,115 +180,145 @@ O projeto é dividido em duas partes independentes que se comunicam através de 
 
 ### Fluxo do Administrador (Painel Interno)
 
-1. O administrador acessa `http://localhost:5173` e navega pelas rotas internas (`/clientes`, `/profissionais`, `/servicos`, `/agendamentos`).
-2. Cada página carrega dados da API via `useEffect` + `Axios` e exibe em tabelas.
-3. O administrador pode cadastrar clientes, profissionais, serviços e gerenciar os agendamentos (confirmar ou cancelar).
+1. O administrador acessa `http://localhost:5173/login` e faz login com email + senha.
+2. O backend valida as credenciais com bcrypt e retorna um token JWT.
+3. O frontend armazena o token no `localStorage` e o envia em todas as requisições administrativas via header `Authorization: Bearer <token>`.
+4. O administrador navega pelas rotas protegidas (`/`, `/clientes`, `/profissionais`, `/servicos`, `/agenda`, `/agendamentos`).
+5. Cada página carrega dados da API via `useEffect` + `Axios` (com token JWT automático via interceptor).
+6. Se o token expirar ou for inválido, o interceptor redireciona para `/login`.
 
 ### Fluxo Público (Cliente)
 
-1. O cliente acessa `http://localhost:5173/arquitetos` e vê a vitrine de arquitetos e serviços.
-2. Clica em **"Agendar"** em um serviço, que o leva para `/agendar?profissionalId=X&servicoId=Y`.
-3. Preenche nome, email, telefone, escolhe a data e submete o formulário.
+1. O cliente acessa `http://localhost:5173/arquitetos` e vê a vitrine de arquitetos com seus serviços.
+2. Clica em **"Agendar"** em um serviço, que o leva para `/agendar?profissional=X` (pré-seleciona o profissional).
+3. No formulário, preenche nome, email, telefone e seleciona:
+   - Profissional (carrega serviços disponíveis)
+   - Serviço (filtrado pelo profissional selecionado — cascade select)
+   - Data e hora
 4. O frontend busca o cliente pelo email (`GET /clientes/email/:email`):
    - Se não existir, cria um novo cliente (`POST /clientes`)
-5. Cria o agendamento com status "pendente" (`POST /agendamentos`).
-6. O administrador vê o novo agendamento na página `/agendamentos` e decide o status.
+5. Cria o agendamento com status "pendente" (`POST /agendamentos`, sem `profissional_id` — o profissional é determinado pelo serviço).
+6. O administrador vê o novo agendamento na página `/agenda` (visão diária) ou `/agendamentos` (lista completa) e pode confirmar ou cancelar.
 
 ---
 
 ## 🗃️ Banco de Dados
 
-O banco de dados é gerenciado pelo **Sequelize**, que cria e mantém as tabelas automaticamente usando o comando `sequelize.sync()`.
+O banco de dados MySQL possui 5 tabelas. O schema é gerenciado manualmente via scripts SQL (`back_and/database/schema.sql`).
 
 ### Diagrama de Entidades e Relacionamentos
 
 ```
-Clientes (1) ─────────────────────────────────── (N) Agendamentos
-Profissionais (1) ──────────────────────────────── (N) Agendamentos
-Servicos (1) ──────────────────────────────────── (N) Agendamentos
+profissionais (1) ────────── (N) servicos
+clientes (1) ─────────────── (N) agendamentos
+servicos (1) ─────────────── (N) agendamentos
 ```
 
-### Tabela: `Clientes`
-| Coluna | Tipo | Obrigatório | Descrição |
-|---|---|---|---|
-| id | INTEGER | ✅ (auto) | Chave primária, gerada automaticamente |
-| nome | VARCHAR | ✅ | Nome completo do cliente |
-| email | VARCHAR | ✅ (único) | E-mail do cliente, não pode se repetir |
-| telefone | VARCHAR | ❌ | Telefone de contato |
-| createdAt | DATETIME | ✅ (auto) | Data de criação, gerada automaticamente |
-| updatedAt | DATETIME | ✅ (auto) | Data de atualização, gerada automaticamente |
+> **Nota:** O relacionamento `profissionais ↔ agendamentos` é indireto através de `servicos` (cada serviço pertence a um profissional).
 
-### Tabela: `Profissionais`
+### Tabela: `profissionais`
 | Coluna | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| id | INTEGER | ✅ (auto) | Chave primária |
-| nome | VARCHAR | ✅ | Nome do profissional/arquiteto |
-| especialidade | VARCHAR | ✅ | Área de atuação (ex: Interiores, Obras) |
+| id | INT | ✅ (auto) | Chave primária |
+| nome | VARCHAR(255) | ✅ | Nome do profissional |
+| especialidade | VARCHAR(255) | ✅ | Área de atuação |
+| telefone | VARCHAR(50) | ❌ | Telefone de contato |
+| ativo | TINYINT(1) | ❌ | Se o profissional está ativo (1=sim, 0=não) |
 | createdAt | DATETIME | ✅ (auto) | Data de criação |
 | updatedAt | DATETIME | ✅ (auto) | Data de atualização |
 
-### Tabela: `Servicos`
+### Tabela: `servicos`
 | Coluna | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| id | INTEGER | ✅ (auto) | Chave primária |
-| nome | VARCHAR | ✅ | Nome do serviço |
+| id | INT | ✅ (auto) | Chave primária |
+| nome | VARCHAR(255) | ✅ | Nome do serviço |
 | descricao | TEXT | ❌ | Descrição detalhada |
 | preco | DECIMAL(10,2) | ✅ | Preço do serviço |
+| duracao_min | INT | ✅ | Duração em minutos (padrão: 60) |
+| profissional_id | INT | ✅ | FK → profissionais.id |
 | createdAt | DATETIME | ✅ (auto) | Data de criação |
 | updatedAt | DATETIME | ✅ (auto) | Data de atualização |
 
-### Tabela: `Agendamentos`
+### Tabela: `clientes`
 | Coluna | Tipo | Obrigatório | Descrição |
 |---|---|---|---|
-| id | INTEGER | ✅ (auto) | Chave primária |
-| data | DATETIME | ✅ | Data e hora da visita agendada |
-| status | VARCHAR | ❌ | Estado: `pendente`, `confirmado` ou `cancelado` (padrão: `pendente`) |
-| ClienteId | INTEGER | ✅ | Chave estrangeira → `Clientes.id` |
-| ProfissionalId | INTEGER | ✅ | Chave estrangeira → `Profissionais.id` |
-| ServicoId | INTEGER | ✅ | Chave estrangeira → `Servicos.id` |
+| id | INT | ✅ (auto) | Chave primária |
+| nome | VARCHAR(255) | ✅ | Nome completo |
+| email | VARCHAR(255) | ✅ (único) | E-mail do cliente |
+| telefone | VARCHAR(50) | ❌ | Telefone de contato |
 | createdAt | DATETIME | ✅ (auto) | Data de criação |
 | updatedAt | DATETIME | ✅ (auto) | Data de atualização |
 
-> **Nota:** As colunas `id`, `createdAt` e `updatedAt` são criadas e gerenciadas automaticamente pelo Sequelize. As chaves estrangeiras (`ClienteId`, `ProfissionalId`, `ServicoId`) são geradas pelos relacionamentos definidos no código.
+### Tabela: `agendamentos`
+| Coluna | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| id | INT | ✅ (auto) | Chave primária |
+| cliente_id | INT | ✅ | FK → clientes.id |
+| servico_id | INT | ✅ | FK → servicos.id |
+| data_hora | DATETIME | ✅ | Data e hora do agendamento |
+| status | VARCHAR(50) | ❌ | `pendente`, `confirmado` ou `cancelado` (padrão: `pendente`) |
+| observacao | TEXT | ❌ | Observações opcionais |
+| createdAt | DATETIME | ✅ (auto) | Data de criação |
+| updatedAt | DATETIME | ✅ (auto) | Data de atualização |
+
+### Tabela: `usuarios`
+| Coluna | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| id | INT | ✅ (auto) | Chave primária |
+| nome | VARCHAR(255) | ✅ | Nome do usuário |
+| email | VARCHAR(255) | ✅ (único) | E-mail para login |
+| senha_hash | VARCHAR(255) | ✅ | Hash bcrypt da senha |
+| perfil | ENUM('admin','profissional') | ✅ | Nível de acesso |
+| createdAt | DATETIME | ✅ (auto) | Data de criação |
+| updatedAt | DATETIME | ✅ (auto) | Data de atualização |
 
 ---
 
 ## 🔗 API REST — Endpoints
 
-O backend roda na porta `3000` e expõe os seguintes endpoints:
+O backend roda na porta `3001` e expõe os seguintes endpoints (prefixo `/api`):
+
+### Autenticação
+| Método | Rota | Descrição | Body (JSON) | Auth |
+|--------|------|-----------|-------------|------|
+| `POST` | `/api/login` | Autentica um usuário e retorna JWT | `{ "email": "", "senha": "" }` | ❌ |
 
 ### Clientes
-| Método | Rota | Descrição | Body (JSON) |
-|---|---|---|---|
-| `GET` | `/clientes` | Retorna a lista de todos os clientes | — |
-| `GET` | `/clientes/email/:email` | Busca um cliente pelo e-mail (usado no fluxo público) | — |
-| `POST` | `/clientes` | Cadastra um novo cliente | `{ "nome": "", "email": "", "telefone": "" }` |
-| `PUT` | `/clientes/:id` | Atualiza os dados de um cliente | `{ "nome": "", "email": "", "telefone": "" }` |
-| `DELETE` | `/clientes/:id` | Remove um cliente | — |
+| Método | Rota | Descrição | Body (JSON) | Auth |
+|--------|------|-----------|-------------|------|
+| `GET` | `/api/clientes` | Lista todos os clientes | — | ✅ |
+| `GET` | `/api/clientes/email/:email` | Busca cliente por e-mail | — | ❌ |
+| `POST` | `/api/clientes` | Cadastra novo cliente | `{ "nome", "email", "telefone" }` | ❌ |
+| `PUT` | `/api/clientes/:id` | Atualiza cliente | `{ "nome", "email", "telefone" }` | ❌ |
+| `DELETE` | `/api/clientes/:id` | Remove cliente | — | ✅ |
 
 ### Profissionais
-| Método | Rota | Descrição | Body (JSON) |
-|---|---|---|---|
-| `GET` | `/profissionais` | Retorna a lista de todos os profissionais | — |
-| `POST` | `/profissionais` | Cadastra um novo profissional | `{ "nome": "", "especialidade": "" }` |
-| `PUT` | `/profissionais/:id` | Atualiza os dados de um profissional | `{ "nome": "", "especialidade": "" }` |
-| `DELETE` | `/profissionais/:id` | Remove um profissional | — |
+| Método | Rota | Descrição | Body (JSON) | Auth |
+|--------|------|-----------|-------------|------|
+| `GET` | `/api/profissionais` | Lista profissionais | — | ❌ |
+| `POST` | `/api/profissionais` | Cadastra profissional | `{ "nome", "especialidade", "telefone", "ativo" }` | ✅ |
+| `PUT` | `/api/profissionais/:id` | Atualiza profissional | — | ✅ |
+| `DELETE` | `/api/profissionais/:id` | Remove profissional | — | ✅ |
 
 ### Serviços
-| Método | Rota | Descrição | Body (JSON) |
-|---|---|---|---|
-| `GET` | `/servicos` | Retorna o catálogo de serviços | — |
-| `POST` | `/servicos` | Cadastra um novo serviço | `{ "nome": "", "descricao": "", "preco": 0.00 }` |
-| `PUT` | `/servicos/:id` | Atualiza os dados de um serviço | `{ "nome": "", "descricao": "", "preco": 0.00 }` |
-| `DELETE` | `/servicos/:id` | Remove um serviço | — |
+| Método | Rota | Descrição | Body (JSON) | Auth |
+|--------|------|-----------|-------------|------|
+| `GET` | `/api/servicos` | Lista serviços (com nome do profissional via JOIN) | — | ❌ |
+| `GET` | `/api/servicos/profissional/:id` | Lista serviços de um profissional | — | ❌ |
+| `POST` | `/api/servicos` | Cadastra serviço | `{ "nome", "descricao", "preco", "duracao_min", "profissional_id" }` | ✅ |
+| `PUT` | `/api/servicos/:id` | Atualiza serviço | — | ✅ |
+| `DELETE` | `/api/servicos/:id` | Remove serviço | — | ✅ |
 
 ### Agendamentos
-| Método | Rota | Descrição | Body (JSON) |
-|---|---|---|---|
-| `GET` | `/agendamentos` | Retorna todos os agendamentos com dados de Cliente, Profissional e Serviço incluídos | — |
-| `POST` | `/agendamentos` | Cria um novo agendamento | `{ "data": "2026-01-01T10:00", "status": "pendente", "ClienteId": 1, "ProfissionalId": 1, "ServicoId": 1 }` |
-| `PUT` | `/agendamentos/:id` | Atualiza os dados de um agendamento | `{ "data": "", "status": "", "ClienteId": 1, "ProfissionalId": 1, "ServicoId": 1 }` |
-| `DELETE` | `/agendamentos/:id` | Remove um agendamento | — |
+| Método | Rota | Descrição | Body (JSON) | Auth |
+|--------|------|-----------|-------------|------|
+| `GET` | `/api/agendamentos` | Lista agendamentos (com dados completos via JOIN) | — | ✅ |
+| `GET` | `/api/agendamentos?data=2026-05-30` | Filtra agendamentos por data | — | ✅ |
+| `POST` | `/api/agendamentos` | Cria agendamento | `{ "data_hora", "cliente_id", "servico_id", "status", "observacao" }` | ❌ |
+| `PUT` | `/api/agendamentos/:id` | Atualiza agendamento | — | ✅ |
+| `DELETE` | `/api/agendamentos/:id` | Remove agendamento | — | ✅ |
+
+> **Nota:** O profissional é determinado através do serviço (relacionamento `servicos.profissional_id`).
 
 ---
 
@@ -275,7 +327,12 @@ O backend roda na porta `3000` e expõe os seguintes endpoints:
 ### Componentes Reutilizáveis (`src/components/`)
 
 #### `Header` (`components/Header/index.jsx`)
-O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita: **Dashboard**, **Clientes**, **Profissionais**, **Serviços**, **Agendamentos**, **Arquitetos** e **Agendar**. Os links internos (Dashboard, Clientes, etc.) são para administradores; os links **Arquitetos** e **Agendar** são a interface pública para clientes. Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa.
+O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita. O Header é sensível ao estado de autenticação:
+
+- **Visitante (não logado):** Arquitetos, Agendar, Login
+- **Administrador (logado):** Arquitetos, Agendar, Dashboard, Agenda, Clientes, Profissionais, Serviços, Agendamentos, [nome] + Sair
+
+Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa.
 
 #### `Footer` (`components/Footer/index.jsx`)
 Rodapé simples exibido na base de todas as páginas com informações de copyright.
@@ -284,14 +341,16 @@ Rodapé simples exibido na base de todas as páginas com informações de copyri
 O arquivo `App.jsx` é o coração do frontend. Ele:
 1. Envolve toda a aplicação no `BrowserRouter` (do React Router DOM).
 2. Define o layout geral: `<Header>` → `<main>` com as rotas → `<Footer>`.
-3. Mapeia cada URL para o componente de página correspondente:
-   - `/` → `<HomePage />`
-   - `/clientes` → `<ClientesPage />`
-   - `/profissionais` → `<ProfissionaisPage />`
-   - `/servicos` → `<ServicosPage />`
-   - `/agendamentos` → `<AgendamentosPage />`
-   - `/arquitetos` → `<ArquitetosPage />` (página pública)
-   - `/agendar` → `<AgendarPage />` (página pública)
+3. Mapeia cada URL para o componente de página correspondente. Rotas administrativas são protegidas por `<PrivateRoute>` (verifica token JWT no localStorage):
+   - `/` → `<HomePage />` (privado)
+   - `/arquitetos` → `<ArquitetosPage />` (público)
+   - `/agendar` → `<AgendarPage />` (público)
+   - `/login` → `<LoginPage />` (público)
+   - `/agenda` → `<AgendaPage />` (privado)
+   - `/clientes` → `<ClientesPage />` (privado)
+   - `/profissionais` → `<ProfissionaisPage />` (privado)
+   - `/servicos` → `<ServicosPage />` (privado)
+   - `/agendamentos` → `<AgendamentosPage />` (privado)
 
 ### Serviço de API (`src/services/api.js`)
 Instância configurada do Axios com a URL base do backend (`http://localhost:3000`). Todos os componentes importam este arquivo para fazer as requisições, garantindo que a URL da API fique em um lugar centralizado.
@@ -321,6 +380,22 @@ Dividida em duas seções:
 Dividida em duas seções:
 1. **Formulário de Cadastro**: Campos de Nome, Descrição e Preço. Ao submeter, faz um `POST /servicos` e recarrega a lista.
 2. **Tabela de Serviços**: Lista todos os serviços cadastrados com colunas ID, Nome, Descrição e Preço.
+
+#### `LoginPage` (rota `/login`) — Página Pública
+Formulário de autenticação com email e senha. Ao fazer login:
+1. Envia `POST /api/login` com email e senha
+2. Recebe um token JWT e dados do usuário
+3. Armazena token e usuário no `localStorage`
+4. Redireciona para o Dashboard (`/`)
+5. Dispara evento `login` que o Header escuta para atualizar a navegação
+
+#### `AgendaPage` (rota `/agenda`) — Página Administrativa
+Visualização dos agendamentos do dia com filtro por data. Funcionalidades:
+- Input de data para selecionar o dia
+- Cards coloridos por status (verde=confirmado, vermelho=cancelado, amarelo=pendente)
+- Botões para confirmar ou cancelar agendamentos diretamente
+- Dados carregados via `GET /api/agendamentos?data=YYYY-MM-DD`
+- Atualização de status via `PUT /api/agendamentos/:id`
 
 #### `ArquitetosPage` (rota `/arquitetos`) — Página Pública
 Vitrine pública que lista todos os arquitetos (profissionais) cadastrados, exibindo seus nomes e especialidades. Abaixo de cada arquiteto, mostra os serviços disponíveis. Cada serviço tem um botão **"Agendar"** que leva o cliente direto para `/agendar?profissionalId=X&servicoId=Y`, pré-selecionando o arquiteto e o serviço.
@@ -371,13 +446,18 @@ npm install
 # Criar o arquivo de variáveis de ambiente (veja a seção abaixo)
 # Edite o arquivo .env com as suas credenciais do MySQL
 
+# (Opcional) Recriar o banco de dados com a estrutura e dados de exemplo:
+node scripts/init-db.js
+
 # Rodar o servidor em modo desenvolvimento (com auto-reload)
 npm run dev
 ```
 
-O backend estará disponível em: **http://localhost:3000**
+O backend estará disponível em: **http://localhost:3001**
 
-Ao iniciar, o Sequelize irá automaticamente criar as tabelas no banco de dados se elas ainda não existirem.
+A API estará disponível em: **http://localhost:3001/api**
+
+> ⚠️ A primeira vez que for rodar o projeto, execute `node scripts/init-db.js` para criar as tabelas e popular com dados de exemplo. O script recria o banco do zero (incluindo DROP DATABASE).
 
 ### Passo 2 — Configurar o Frontend
 
@@ -414,7 +494,13 @@ DB_PASSWORD=sua_senha
 DB_DATABASE=mydb
 
 # Porta em que o servidor Node.js irá rodar
-PORT=3000
+PORT=3001
+
+# Origem permitida pelo CORS (separar múltiplas com vírgula)
+CORS_ORIGIN=http://localhost:5173
+
+# Chave secreta para assinar os tokens JWT
+JWT_SECRET=agendafacil_super_secreto_2026
 ```
 
 > ⚠️ **Importante**: O arquivo `.env` está listado no `.gitignore` e **não deve ser enviado para o GitHub**, pois contém credenciais sensíveis.

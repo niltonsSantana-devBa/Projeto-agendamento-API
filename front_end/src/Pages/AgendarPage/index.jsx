@@ -9,8 +9,13 @@ function AgendarPage() {
   const [searchParams] = useSearchParams();
   const [profissionais, setProfissionais] = useState([]);
   const [servicos, setServicos] = useState([]);
-  const { register, handleSubmit, setValue } = useForm();
+  const { register, handleSubmit, setValue, watch } = useForm();
   const [enviando, setEnviando] = useState(false);
+
+  const selectedProf = watch('profissional_id');
+  const servicosFiltrados = selectedProf
+    ? servicos.filter(s => s.profissional_id == selectedProf)
+    : [];
 
   useEffect(() => {
     async function carregar() {
@@ -23,7 +28,9 @@ function AgendarPage() {
         setServicos(resServ.data);
 
         const profId = searchParams.get('profissional');
-        if (profId) setValue('ProfissionalId', profId);
+        if (profId) {
+          setValue('profissional_id', profId);
+        }
       } catch (error) {
         console.error("Erro ao carregar", error);
       }
@@ -48,10 +55,9 @@ function AgendarPage() {
       }
 
       await api.post('/agendamentos', {
-        data: data.data,
-        ClienteId: clienteId,
-        ProfissionalId: Number(data.ProfissionalId),
-        ServicoId: Number(data.ServicoId),
+        data_hora: data.data_hora,
+        cliente_id: Number(clienteId),
+        servico_id: Number(data.servico_id),
         status: 'pendente'
       });
 
@@ -88,7 +94,7 @@ function AgendarPage() {
 
         <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column' }}>
           <label style={{ fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Profissional</label>
-          <select {...register('ProfissionalId', { required: true })} style={{ padding: '10px', border: '1px solid #bdc3c7', borderRadius: '4px', fontSize: '14px' }}>
+          <select {...register('profissional_id', { required: true })} style={{ padding: '10px', border: '1px solid #bdc3c7', borderRadius: '4px', fontSize: '14px' }}>
             <option value="">Selecione um arquiteto...</option>
             {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome} - {p.especialidade}</option>)}
           </select>
@@ -96,15 +102,18 @@ function AgendarPage() {
 
         <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column' }}>
           <label style={{ fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Serviço</label>
-          <select {...register('ServicoId', { required: true })} style={{ padding: '10px', border: '1px solid #bdc3c7', borderRadius: '4px', fontSize: '14px' }}>
+          <select {...register('servico_id', { required: true })} style={{ padding: '10px', border: '1px solid #bdc3c7', borderRadius: '4px', fontSize: '14px' }}>
             <option value="">Selecione um serviço...</option>
-            {servicos.map(s => <option key={s.id} value={s.id}>{s.nome} - R$ {parseFloat(s.preco).toFixed(2)}</option>)}
+            {servicosFiltrados.map(s => <option key={s.id} value={s.id}>{s.nome} - R$ {parseFloat(s.preco).toFixed(2)}</option>)}
           </select>
+          {selectedProf && servicosFiltrados.length === 0 && (
+            <small style={{ color: '#e74c3c', marginTop: '4px' }}>Nenhum serviço disponível para este profissional.</small>
+          )}
         </div>
 
         <div style={{ marginBottom: '15px', display: 'flex', flexDirection: 'column' }}>
           <label style={{ fontWeight: 'bold', marginBottom: '5px', color: '#34495e' }}>Data e Hora</label>
-          <input type="datetime-local" {...register('data', { required: true })} style={{ padding: '10px', border: '1px solid #bdc3c7', borderRadius: '4px', fontSize: '14px' }} />
+          <input type="datetime-local" {...register('data_hora', { required: true })} style={{ padding: '10px', border: '1px solid #bdc3c7', borderRadius: '4px', fontSize: '14px' }} />
         </div>
 
         <button type="submit" disabled={enviando} style={{ backgroundColor: enviando ? '#95a5a6' : '#27ae60', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', width: '100%' }}>

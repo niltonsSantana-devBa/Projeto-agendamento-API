@@ -33,3 +33,26 @@
 .nav-links a.active {
   background-color: rgba(255, 255, 255, 0.2);
 }
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #bdc3c7;
+}
+
+.btn-logout {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.btn-logout:hover {
+  background-color: #c0392b;
+}
