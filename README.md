@@ -7,6 +7,7 @@
 ## 📋 Índice
 
 - [Sobre o Projeto](#sobre-o-projeto)
+- [Funcionalidades](#funcionalidades)
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura de Pastas](#estrutura-de-pastas)
 - [Como o Projeto Funciona](#como-o-projeto-funciona)
@@ -23,19 +24,48 @@
 O AgendaFácil foi desenvolvido como um sistema fullstack com separação clara entre frontend (interface) e backend (API). A aplicação segue o modelo de Single Page Application (SPA) no frontend, onde a navegação acontece sem recarregar a página, e uma API RESTful no backend que se comunica com um banco de dados MySQL usando mysql2 puro.
 
 O sistema é voltado para escritórios de arquitetura que precisam gerenciar:
-- **Clientes**: Quem solicita os serviços.
-- **Profissionais**: Os arquitetos responsáveis pelas visitas.
+- **Clientes**: Quem solicita os serviços (não precisam de conta).
+- **Profissionais (Arquitetos)**: Os arquitetos responsáveis pelas visitas.
 - **Serviços**: O catálogo de serviços oferecidos (cada serviço pertence a um profissional).
 - **Agendamentos**: O registro das visitas marcadas, vinculando cliente e serviço (o profissional é definido pelo serviço).
-- **Usuários**: Contas de acesso para administradores (autenticação JWT).
+- **Usuários**: Contas de acesso para **administradores** e **arquitetos** (autenticação JWT com perfis).
 
-### 🌐 Fluxo Público
+### 🌐 Fluxo Público (Cliente)
 
 1. **Clientes** acessam `/arquitetos` para ver os profissionais e serviços disponíveis
 2. Clicam em "Agendar" e são levados ao formulário em `/agendar`
 3. Preenchem dados pessoais, escolhem profissional → serviço (filtrados) → data/hora
 4. O sistema cria o cliente (se não existir) e registra o agendamento com status "pendente"
 5. **Administradores** logam em `/login` e gerenciam os agendamentos via `/agenda` (visão diária)
+
+### 🔐 Fluxo do Arquiteto (Auto-Cadastro)
+
+1. O arquiteto acessa `/registrar-arquiteto` e preenche nome, email, senha e especialidade
+2. O sistema cria uma conta de usuário com perfil `profissional` e um registro vinculado na tabela `profissionais`
+3. O arquiteto é logado automaticamente e redirecionado para `/meus-servicos`
+4. Em `/meus-servicos` ele gerencia (cria, edita, exclui) seus próprios serviços
+5. Quando um cliente agenda um serviço desse arquiteto, ele pode consultar seus agendamentos via API (`GET /api/agendamentos/meus`) com nome, email e telefone do cliente para contato
+6. Arquitetos também podem logar em `/login` com email e senha cadastrados
+
+---
+
+## ✨ Funcionalidades
+
+### Para Clientes (sem login)
+- **Vitrine de Arquitetos** (`/arquitetos`): visualizar profissionais e serviços disponíveis
+- **Agendamento Online** (`/agendar`): preencher dados pessoais, escolher profissional e serviço, selecionar data/hora
+- Agendamentos são criados com status "pendente" para aprovação do administrador
+
+### Para Arquitetos (com auto-cadastro)
+- **Auto-cadastro** (`/registrar-arquiteto`): criar conta com nome, email, senha e especialidade
+- **Gerenciar Serviços** (`/meus-servicos`): criar, editar e excluir seus próprios serviços
+- **Consultar Agendamentos** (via API): ver agendamentos recebidos com nome, email e telefone do cliente para contato
+
+### Para Administradores (login protegido)
+- **Dashboard** (`/`): visão geral com totais de clientes, profissionais, serviços e agendamentos
+- **Agenda Diária** (`/agenda`): visualização dos agendamentos do dia com cards por status
+- **CRUD Completo**: gerenciar clientes, profissionais, serviços e agendamentos
+- **Confirmação/Cancelamento**: alterar status dos agendamentos diretamente pela interface
 
 ---
 
@@ -122,6 +152,10 @@ Projeto-agendamento-API/
 │   │   │   │   └── index.jsx  # Dashboard: exibe totais em cards (clientes, agendamentos...)
 │   │   │   ├── AgendarPage/        # ★ PÁGINA PÚBLICA
 │   │   │   │   └── index.jsx  # Formulário para cliente agendar online
+│   │   │   ├── RegistrarArquitetoPage/ # ★ PÁGINA PÚBLICA
+│   │   │   │   └── index.jsx  # Auto-cadastro de arquitetos
+│   │   │   ├── MeusServicosPage/      # ★ PÁGINA DO ARQUITETO
+│   │   │   │   └── index.jsx  # CRUD de serviços do arquiteto logado
 │   │   │   ├── ArquitetosPage/    # ★ PÁGINA PÚBLICA
 │   │   │   │   └── index.jsx  # Vitrine de arquitetos e serviços
 │   │   │   ├── ClientesPage/
@@ -161,14 +195,14 @@ O projeto é dividido em duas partes independentes que se comunicam através de 
         ▼
 [Frontend — React/Vite (porta 5173)]
         │
-        │  faz requisições HTTP (GET, POST) via Axios
-        │  ex: GET http://localhost:3000/clientes
+        │  faz requisições HTTP (GET, POST, PUT, DELETE) via Axios
+        │  ex: GET http://localhost:3001/api/clientes
         ▼
-[Backend — Node.js/Express (porta 3000)]
+[Backend — Node.js/Express (porta 3001)]
         │
-        │  recebe a requisição, consulta o banco de dados via Sequelize
+        │  recebe a requisição, consulta o banco de dados via mysql2 (pool)
         ▼
-[Banco de Dados — MySQL]
+[Banco de Dados — MySQL (porta 3306)]
         │
         │  retorna os dados em formato JSON
         ▼
@@ -181,11 +215,13 @@ O projeto é dividido em duas partes independentes que se comunicam através de 
 ### Fluxo do Administrador (Painel Interno)
 
 1. O administrador acessa `http://localhost:5173/login` e faz login com email + senha.
-2. O backend valida as credenciais com bcrypt e retorna um token JWT.
-3. O frontend armazena o token no `localStorage` e o envia em todas as requisições administrativas via header `Authorization: Bearer <token>`.
-4. O administrador navega pelas rotas protegidas (`/`, `/clientes`, `/profissionais`, `/servicos`, `/agenda`, `/agendamentos`).
+2. O backend valida as credenciais com bcrypt e retorna um token JWT contendo o perfil (`admin` ou `profissional`).
+3. O frontend armazena o token no `localStorage` e o envia em todas as requisições autenticadas via header `Authorization: Bearer <token>`.
+4. Dependendo do perfil:
+   - **Admin**: navega pelas rotas protegidas (`/`, `/clientes`, `/profissionais`, `/servicos`, `/agenda`, `/agendamentos`).
+   - **Arquiteto**: redirecionado para `/meus-servicos` onde gerencia seus próprios serviços.
 5. Cada página carrega dados da API via `useEffect` + `Axios` (com token JWT automático via interceptor).
-6. Se o token expirar ou for inválido, o interceptor redireciona para `/login`.
+6. Se o token expirar ou for inválido (status 401), o interceptor do Axios limpa o localStorage e redireciona para `/login`.
 
 ### Fluxo Público (Cliente)
 
@@ -209,12 +245,13 @@ O banco de dados MySQL possui 5 tabelas. O schema é gerenciado manualmente via 
 ### Diagrama de Entidades e Relacionamentos
 
 ```
+usuarios (1) ─────────────── (1) profissionais
 profissionais (1) ────────── (N) servicos
 clientes (1) ─────────────── (N) agendamentos
 servicos (1) ─────────────── (N) agendamentos
 ```
 
-> **Nota:** O relacionamento `profissionais ↔ agendamentos` é indireto através de `servicos` (cada serviço pertence a um profissional).
+> **Nota:** O relacionamento `profissionais ↔ agendamentos` é indireto através de `servicos` (cada serviço pertence a um profissional). A tabela `usuarios` armazena as credenciais de login; profissionais podem ter uma conta vinculada (`usuario_id`) para acessar o sistema.
 
 ### Tabela: `profissionais`
 | Coluna | Tipo | Obrigatório | Descrição |
@@ -224,6 +261,7 @@ servicos (1) ─────────────── (N) agendamentos
 | especialidade | VARCHAR(255) | ✅ | Área de atuação |
 | telefone | VARCHAR(50) | ❌ | Telefone de contato |
 | ativo | TINYINT(1) | ❌ | Se o profissional está ativo (1=sim, 0=não) |
+| usuario_id | INT | ❌ (único) | FK → usuarios.id (vincula conta de login) |
 | createdAt | DATETIME | ✅ (auto) | Data de criação |
 | updatedAt | DATETIME | ✅ (auto) | Data de atualização |
 
@@ -281,7 +319,8 @@ O backend roda na porta `3001` e expõe os seguintes endpoints (prefixo `/api`):
 ### Autenticação
 | Método | Rota | Descrição | Body (JSON) | Auth |
 |--------|------|-----------|-------------|------|
-| `POST` | `/api/login` | Autentica um usuário e retorna JWT | `{ "email": "", "senha": "" }` | ❌ |
+| `POST` | `/api/login` | Autentica e retorna JWT (admin ou profissional) | `{ "email": "", "senha": "" }` | ❌ |
+| `POST` | `/api/register/profissional` | Auto-cadastro de arquiteto (cria usuário + profissional) | `{ "nome", "email", "senha", "especialidade", "telefone?" }` | ❌ |
 
 ### Clientes
 | Método | Rota | Descrição | Body (JSON) | Auth |
@@ -305,6 +344,7 @@ O backend roda na porta `3001` e expõe os seguintes endpoints (prefixo `/api`):
 |--------|------|-----------|-------------|------|
 | `GET` | `/api/servicos` | Lista serviços (com nome do profissional via JOIN) | — | ❌ |
 | `GET` | `/api/servicos/profissional/:id` | Lista serviços de um profissional | — | ❌ |
+| `GET` | `/api/servicos/meus` | Lista serviços do arquiteto logado (filtrado pelo token) | — | ✅ |
 | `POST` | `/api/servicos` | Cadastra serviço | `{ "nome", "descricao", "preco", "duracao_min", "profissional_id" }` | ✅ |
 | `PUT` | `/api/servicos/:id` | Atualiza serviço | — | ✅ |
 | `DELETE` | `/api/servicos/:id` | Remove serviço | — | ✅ |
@@ -314,11 +354,12 @@ O backend roda na porta `3001` e expõe os seguintes endpoints (prefixo `/api`):
 |--------|------|-----------|-------------|------|
 | `GET` | `/api/agendamentos` | Lista agendamentos (com dados completos via JOIN) | — | ✅ |
 | `GET` | `/api/agendamentos?data=2026-05-30` | Filtra agendamentos por data | — | ✅ |
+| `GET` | `/api/agendamentos/meus` | Lista agendamentos do arquiteto logado (com nome/email/telefone do cliente) | — | ✅ |
 | `POST` | `/api/agendamentos` | Cria agendamento | `{ "data_hora", "cliente_id", "servico_id", "status", "observacao" }` | ❌ |
 | `PUT` | `/api/agendamentos/:id` | Atualiza agendamento | — | ✅ |
 | `DELETE` | `/api/agendamentos/:id` | Remove agendamento | — | ✅ |
 
-> **Nota:** O profissional é determinado através do serviço (relacionamento `servicos.profissional_id`).
+> **Nota:** O profissional é determinado através do serviço (relacionamento `servicos.profissional_id`). O endpoint `GET /api/agendamentos/meus` retorna os dados de contato do cliente (`cliente_nome`, `cliente_email`, `cliente_telefone`) para que o arquiteto possa entrar em contato.
 
 ---
 
@@ -327,12 +368,13 @@ O backend roda na porta `3001` e expõe os seguintes endpoints (prefixo `/api`):
 ### Componentes Reutilizáveis (`src/components/`)
 
 #### `Header` (`components/Header/index.jsx`)
-O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita. O Header é sensível ao estado de autenticação:
+O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita. O Header é sensível ao estado de autenticação e ao perfil do usuário:
 
-- **Visitante (não logado):** Arquitetos, Agendar, Login
+- **Visitante (não logado):** Arquitetos, Agendar, Cadastre-se, Login
+- **Arquiteto (logado):** Arquitetos, Agendar, Meus Serviços, [nome] + Sair
 - **Administrador (logado):** Arquitetos, Agendar, Dashboard, Agenda, Clientes, Profissionais, Serviços, Agendamentos, [nome] + Sair
 
-Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa.
+Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa. O Header escuta o evento customizado `login` (disparado pelo LoginPage e RegistrarArquitetoPage) para atualizar os links sem recarregar a página.
 
 #### `Footer` (`components/Footer/index.jsx`)
 Rodapé simples exibido na base de todas as páginas com informações de copyright.
@@ -341,19 +383,24 @@ Rodapé simples exibido na base de todas as páginas com informações de copyri
 O arquivo `App.jsx` é o coração do frontend. Ele:
 1. Envolve toda a aplicação no `BrowserRouter` (do React Router DOM).
 2. Define o layout geral: `<Header>` → `<main>` com as rotas → `<Footer>`.
-3. Mapeia cada URL para o componente de página correspondente. Rotas administrativas são protegidas por `<PrivateRoute>` (verifica token JWT no localStorage):
-   - `/` → `<HomePage />` (privado)
+3. Mapeia cada URL para o componente de página correspondente. Rotas autenticadas são protegidas por `<PrivateRoute>` (verifica token JWT no localStorage):
+   - `/` → `<HomePage />` (autenticado — admin)
    - `/arquitetos` → `<ArquitetosPage />` (público)
    - `/agendar` → `<AgendarPage />` (público)
+   - `/registrar-arquiteto` → `<RegistrarArquitetoPage />` (público)
    - `/login` → `<LoginPage />` (público)
-   - `/agenda` → `<AgendaPage />` (privado)
-   - `/clientes` → `<ClientesPage />` (privado)
-   - `/profissionais` → `<ProfissionaisPage />` (privado)
-   - `/servicos` → `<ServicosPage />` (privado)
-   - `/agendamentos` → `<AgendamentosPage />` (privado)
+   - `/meus-servicos` → `<MeusServicosPage />` (autenticado — arquiteto)
+   - `/agenda` → `<AgendaPage />` (autenticado — admin)
+   - `/clientes` → `<ClientesPage />` (autenticado — admin)
+   - `/profissionais` → `<ProfissionaisPage />` (autenticado — admin)
+   - `/servicos` → `<ServicosPage />` (autenticado — admin)
+   - `/agendamentos` → `<AgendamentosPage />` (autenticado — admin)
 
 ### Serviço de API (`src/services/api.js`)
-Instância configurada do Axios com a URL base do backend (`http://localhost:3000`). Todos os componentes importam este arquivo para fazer as requisições, garantindo que a URL da API fique em um lugar centralizado.
+Instância configurada do Axios com a URL base do backend (`http://localhost:3001/api`). Também possui:
+- **Interceptor de requisição**: adiciona automaticamente o header `Authorization: Bearer <token>` em todas as requisições (se o token existir no localStorage)
+- **Interceptor de resposta**: se receber status 401 (não autorizado), limpa o localStorage e redireciona para `/login`
+- O prefixo `/api` já está na baseURL, então os componentes usam apenas o path relativo (ex: `api.get('/clientes')`)
 
 ### Páginas (`src/Pages/`)
 
@@ -384,10 +431,29 @@ Dividida em duas seções:
 #### `LoginPage` (rota `/login`) — Página Pública
 Formulário de autenticação com email e senha. Ao fazer login:
 1. Envia `POST /api/login` com email e senha
-2. Recebe um token JWT e dados do usuário
-3. Armazena token e usuário no `localStorage`
-4. Redireciona para o Dashboard (`/`)
+2. Recebe um token JWT contendo id, nome, email e perfil (`admin` ou `profissional`) e, se for profissional, o `profissionalId` vinculado
+3. Armazena token e dados do usuário no `localStorage`
+4. Redireciona conforme o perfil:
+   - **Admin** → Dashboard (`/`)
+   - **Arquiteto** → Meus Serviços (`/meus-servicos`)
 5. Dispara evento `login` que o Header escuta para atualizar a navegação
+6. Exibe link "É arquiteto? Cadastre-se" para novos arquitetos
+
+#### `RegistrarArquitetoPage` (rota `/registrar-arquiteto`) — Página Pública
+Formulário de auto-cadastro para arquitetos. Campos: Nome, Email, Senha (mín. 6 caracteres), Especialidade e Telefone (opcional). Ao submeter:
+1. Envia `POST /api/register/profissional` com todos os dados
+2. O backend cria um registro em `usuarios` (perfil `profissional`) e um registro vinculado em `profissionais` com o `usuario_id`
+3. Retorna token JWT e dados do usuário (incluindo `profissionalId`)
+4. Armazena token e dados no `localStorage`, dispara evento `login` e redireciona para `/meus-servicos`
+5. Exibe link "Já tem conta? Faça login"
+
+#### `MeusServicosPage` (rota `/meus-servicos`) — Página Autenticada (Arquiteto)
+Painel do arquiteto para gerenciar seus próprios serviços. Funcionalidades:
+- **Formulário**: cadastra novo serviço com Nome, Descrição, Preço e Duração (minutos)
+- **Listagem**: exibe todos os serviços do arquiteto logado em cards
+- **Edição**: clica em "Editar" no card para preencher o formulário com os dados do serviço
+- **Exclusão**: clica em "Excluir" com confirmação via `window.confirm`
+- Os dados são carregados via `GET /api/servicos/meus` (filtrado pelo token JWT — apenas serviços onde `profissionais.usuario_id` coincide com o usuário logado)
 
 #### `AgendaPage` (rota `/agenda`) — Página Administrativa
 Visualização dos agendamentos do dia com filtro por data. Funcionalidades:
@@ -496,7 +562,7 @@ DB_DATABASE=mydb
 # Porta em que o servidor Node.js irá rodar
 PORT=3001
 
-# Origem permitida pelo CORS (separar múltiplas com vírgula)
+# Origem permitida pelo CORS (separar múltiplas com vírgula, ex: http://localhost:5173,https://meusite.com)
 CORS_ORIGIN=http://localhost:5173
 
 # Chave secreta para assinar os tokens JWT

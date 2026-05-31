@@ -8,6 +8,21 @@ CREATE DATABASE IF NOT EXISTS `mydb`
 USE `mydb`;
 
 -- -----------------------------------------------------------
+-- Tabela: usuarios (must come before profissionais due to FK)
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `usuarios` (
+  `id`         INT          NOT NULL AUTO_INCREMENT,
+  `nome`       VARCHAR(255) NOT NULL,
+  `email`      VARCHAR(255) NOT NULL,
+  `senha_hash` VARCHAR(255) NOT NULL,
+  `perfil`     ENUM('admin','profissional') NOT NULL DEFAULT 'admin',
+  `createdAt`  DATETIME     NOT NULL,
+  `updatedAt`  DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- -----------------------------------------------------------
 -- Tabela: profissionais
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `profissionais` (
@@ -16,9 +31,13 @@ CREATE TABLE IF NOT EXISTS `profissionais` (
   `especialidade` VARCHAR(255) NOT NULL,
   `telefone`      VARCHAR(50)  DEFAULT NULL,
   `ativo`         TINYINT(1)   DEFAULT 1,
+  `usuario_id`    INT          DEFAULT NULL,
   `createdAt`     DATETIME     NOT NULL,
   `updatedAt`     DATETIME     NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `usuario_id` (`usuario_id`),
+  CONSTRAINT `fk_profissional_usuario` FOREIGN KEY (`usuario_id`)
+    REFERENCES `usuarios` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- -----------------------------------------------------------
@@ -74,17 +93,4 @@ CREATE TABLE IF NOT EXISTS `agendamentos` (
     REFERENCES `servicos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- -----------------------------------------------------------
--- Tabela: usuarios
--- -----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `usuarios` (
-  `id`         INT          NOT NULL AUTO_INCREMENT,
-  `nome`       VARCHAR(255) NOT NULL,
-  `email`      VARCHAR(255) NOT NULL,
-  `senha_hash` VARCHAR(255) NOT NULL,
-  `perfil`     ENUM('admin','profissional') NOT NULL DEFAULT 'admin',
-  `createdAt`  DATETIME     NOT NULL,
-  `updatedAt`  DATETIME     NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+

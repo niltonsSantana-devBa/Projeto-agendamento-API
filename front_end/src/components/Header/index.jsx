@@ -41,14 +41,27 @@ function Header() {
         <NavLink to="/arquitetos">Arquitetos</NavLink>
         <NavLink to="/agendar">Agendar</NavLink>
 
+        {!usuario && (
+          <NavLink to="/registrar-arquiteto">Cadastre-se</NavLink>
+        )}
+
         {usuario ? (
           <>
-            <NavLink to="/">Dashboard</NavLink>
-            <NavLink to="/agenda">Agenda</NavLink>
-            <NavLink to="/clientes">Clientes</NavLink>
-            <NavLink to="/profissionais">Profissionais</NavLink>
-            <NavLink to="/servicos">Serviços</NavLink>
-            <NavLink to="/agendamentos">Agendamentos</NavLink>
+            {usuario.perfil === 'admin' && (
+              <>
+                <NavLink to="/">Dashboard</NavLink>
+                <NavLink to="/agenda">Agenda</NavLink>
+                <NavLink to="/clientes">Clientes</NavLink>
+                <NavLink to="/profissionais">Profissionais</NavLink>
+                <NavLink to="/servicos">Serviços</NavLink>
+                <NavLink to="/agendamentos">Agendamentos</NavLink>
+              </>
+            )}
+            {usuario.perfil === 'profissional' && (
+              <>
+                <NavLink to="/meus-servicos">Meus Serviços</NavLink>
+              </>
+            )}
             <span className="user-info">
               {usuario.nome}
               <button onClick={handleLogout} className="btn-logout">Sair</button>

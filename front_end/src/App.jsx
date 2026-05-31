@@ -11,6 +11,8 @@ import ArquitetosPage from './Pages/ArquitetosPage';
 import AgendarPage from './Pages/AgendarPage';
 import LoginPage from './Pages/LoginPage';
 import AgendaPage from './Pages/AgendaPage';
+import RegistrarArquitetoPage from './Pages/RegistrarArquitetoPage';
+import MeusServicosPage from './Pages/MeusServicosPage';
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -28,6 +30,8 @@ function App() {
             <Route path="/arquitetos" element={<ArquitetosPage />} />
             <Route path="/agendar" element={<AgendarPage />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/registrar-arquiteto" element={<RegistrarArquitetoPage />} />
+            <Route path="/meus-servicos" element={<PrivateRoute><MeusServicosPage /></PrivateRoute>} />
             <Route path="/agenda" element={<PrivateRoute><AgendaPage /></PrivateRoute>} />
             <Route path="/clientes" element={<PrivateRoute><ClientesPage /></PrivateRoute>} />
             <Route path="/profissionais" element={<PrivateRoute><ProfissionaisPage /></PrivateRoute>} />

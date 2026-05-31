@@ -22,6 +22,19 @@ async function init() {
             DEFAULT COLLATE utf8mb4_unicode_ci;
         USE \`${process.env.DB_DATABASE || 'mydb'}\`;
 
+        -- Tabela: usuarios (must come before profissionais due to FK)
+        CREATE TABLE \`usuarios\` (
+            \`id\`         INT          NOT NULL AUTO_INCREMENT,
+            \`nome\`       VARCHAR(255) NOT NULL,
+            \`email\`      VARCHAR(255) NOT NULL,
+            \`senha_hash\` VARCHAR(255) NOT NULL,
+            \`perfil\`     ENUM('admin','profissional') NOT NULL DEFAULT 'admin',
+            \`createdAt\`  DATETIME     NOT NULL,
+            \`updatedAt\`  DATETIME     NOT NULL,
+            PRIMARY KEY (\`id\`),
+            UNIQUE KEY \`email\` (\`email\`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
         -- Tabela: profissionais
         CREATE TABLE \`profissionais\` (
             \`id\`            INT          NOT NULL AUTO_INCREMENT,
@@ -29,9 +42,13 @@ async function init() {
             \`especialidade\` VARCHAR(255) NOT NULL,
             \`telefone\`      VARCHAR(50)  DEFAULT NULL,
             \`ativo\`         TINYINT(1)   DEFAULT 1,
+            \`usuario_id\`    INT          DEFAULT NULL,
             \`createdAt\`     DATETIME     NOT NULL,
             \`updatedAt\`     DATETIME     NOT NULL,
-            PRIMARY KEY (\`id\`)
+            PRIMARY KEY (\`id\`),
+            UNIQUE KEY \`usuario_id\` (\`usuario_id\`),
+            CONSTRAINT \`fk_profissional_usuario\` FOREIGN KEY (\`usuario_id\`)
+                REFERENCES \`usuarios\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
         -- Tabela: servicos
@@ -78,24 +95,11 @@ async function init() {
                 REFERENCES \`servicos\` (\`id\`) ON DELETE CASCADE ON UPDATE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-        -- Tabela: usuarios
-        CREATE TABLE \`usuarios\` (
-            \`id\`         INT          NOT NULL AUTO_INCREMENT,
-            \`nome\`       VARCHAR(255) NOT NULL,
-            \`email\`      VARCHAR(255) NOT NULL,
-            \`senha_hash\` VARCHAR(255) NOT NULL,
-            \`perfil\`     ENUM('admin','profissional') NOT NULL DEFAULT 'admin',
-            \`createdAt\`  DATETIME     NOT NULL,
-            \`updatedAt\`  DATETIME     NOT NULL,
-            PRIMARY KEY (\`id\`),
-            UNIQUE KEY \`email\` (\`email\`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
         -- Seed: Profissionais
-        INSERT INTO \`profissionais\` (\`nome\`, \`especialidade\`, \`telefone\`, \`ativo\`, \`createdAt\`, \`updatedAt\`) VALUES
-        ('Dr. Rafael Mendes',   'Arquitetura Residencial', '11911111111', 1, NOW(), NOW()),
-        ('Arq. Juliana Torres', 'Design de Interiores',    '11922222222', 1, NOW(), NOW()),
-        ('Arq. Pedro Almeida',  'Arquitetura Comercial',   '11933333333', 1, NOW(), NOW());
+        INSERT INTO \`profissionais\` (\`nome\`, \`especialidade\`, \`telefone\`, \`ativo\`, \`usuario_id\`, \`createdAt\`, \`updatedAt\`) VALUES
+        ('Dr. Rafael Mendes',   'Arquitetura Residencial', '11911111111', 1, NULL, NOW(), NOW()),
+        ('Arq. Juliana Torres', 'Design de Interiores',    '11922222222', 1, NULL, NOW(), NOW()),
+        ('Arq. Pedro Almeida',  'Arquitetura Comercial',   '11933333333', 1, NULL, NOW(), NOW());
 
         -- Seed: Servicos
         INSERT INTO \`servicos\` (\`nome\`, \`descricao\`, \`preco\`, \`duracao_min\`, \`profissional_id\`, \`createdAt\`, \`updatedAt\`) VALUES

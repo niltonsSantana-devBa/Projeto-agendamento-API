@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '../../services/api';
@@ -17,8 +17,10 @@ function LoginPage() {
       const response = await api.post('/login', { email, senha });
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('usuario', JSON.stringify(response.data.usuario));
+      window.dispatchEvent(new Event('login'));
       toast.success('Login realizado com sucesso!');
-      navigate('/');
+      const perfil = response.data.usuario.perfil;
+      navigate(perfil === 'profissional' ? '/meus-servicos' : '/');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erro ao fazer login');
     } finally {
@@ -29,7 +31,7 @@ function LoginPage() {
   return (
     <div style={{ padding: '20px', maxWidth: '400px', margin: '40px auto' }}>
       <ToastContainer position="top-right" autoClose={3000} />
-      <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>Login Administrativo</h2>
+      <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>Login</h2>
       <form onSubmit={handleSubmit} style={{
         backgroundColor: '#fff', padding: '30px', borderRadius: '8px',
         boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
@@ -57,6 +59,10 @@ function LoginPage() {
         }}>
           {enviando ? 'Entrando...' : 'Entrar'}
         </button>
+
+        <p style={{ textAlign: 'center', marginTop: '20px', color: '#7f8c8d', fontSize: '0.9em' }}>
+          É arquiteto? <Link to="/registrar-arquiteto" style={{ color: '#2980b9' }}>Cadastre-se</Link>
+        </p>
       </form>
     </div>
   );

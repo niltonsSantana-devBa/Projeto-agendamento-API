@@ -26,6 +26,22 @@ exports.listarPorProfissional = async (req, res) => {
     }
 };
 
+exports.listarMeus = async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT s.*, p.nome AS profissional_nome
+             FROM servicos s
+             JOIN profissionais p ON s.profissional_id = p.id
+             WHERE p.usuario_id = ?
+             ORDER BY s.nome`,
+            [req.usuario.id]
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 exports.criar = async (req, res) => {
     try {
         if (!req.body.nome || !req.body.preco || !req.body.profissional_id) {

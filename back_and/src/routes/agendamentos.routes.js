@@ -5,6 +5,7 @@ const authMiddleware = require('../middleware/auth.middleware');
 const router = Router();
 
 router.get('/', authMiddleware, agendamentosController.listar);
+router.get('/meus', authMiddleware, agendamentosController.listarMeus);
 router.post('/', agendamentosController.criar);
 router.put('/:id', authMiddleware, agendamentosController.atualizar);
 router.delete('/:id', authMiddleware, agendamentosController.deletar);

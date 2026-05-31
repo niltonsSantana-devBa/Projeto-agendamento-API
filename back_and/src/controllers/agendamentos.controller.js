@@ -85,6 +85,26 @@ exports.atualizar = async (req, res) => {
     }
 };
 
+exports.listarMeus = async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT a.id, a.data_hora, a.status, a.observacao, a.createdAt, a.updatedAt,
+                    c.id AS cliente_id, c.nome AS cliente_nome, c.email AS cliente_email, c.telefone AS cliente_telefone,
+                    s.id AS servico_id, s.nome AS servico_nome, s.preco AS servico_preco
+             FROM agendamentos a
+             JOIN clientes c ON a.cliente_id = c.id
+             JOIN servicos s ON a.servico_id = s.id
+             JOIN profissionais p ON s.profissional_id = p.id
+             WHERE p.usuario_id = ?
+             ORDER BY a.data_hora DESC`,
+            [req.usuario.id]
+        );
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 exports.deletar = async (req, res) => {
     try {
         const { id } = req.params;
