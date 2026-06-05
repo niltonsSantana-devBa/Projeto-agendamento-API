@@ -59,18 +59,28 @@ exports.criar = async (req, res) => {
 exports.atualizar = async (req, res) => {
     try {
         const { id } = req.params;
-        const { data_hora, cliente_id, servico_id, status, observacao } = req.body;
-        const [result] = await pool.query(
-            'UPDATE agendamentos SET data_hora = ?, cliente_id = ?, servico_id = ?, status = ?, observacao = ?, updatedAt = NOW() WHERE id = ?',
-            [data_hora, cliente_id, servico_id, status, observacao || null, id]
-        );
-        if (result.affectedRows === 0) {
+
+        const [atual] = await pool.query('SELECT * FROM agendamentos WHERE id = ?', [id]);
+        if (atual.length === 0) {
             return res.status(404).json({ error: 'Agendamento não encontrado' });
         }
+
+        const dadosAtuais = atual[0];
+        const data_hora = req.body.data_hora ?? dadosAtuais.data_hora;
+        const cliente_id = req.body.cliente_id ?? dadosAtuais.cliente_id;
+        const servico_id = req.body.servico_id ?? dadosAtuais.servico_id;
+        const status = req.body.status ?? dadosAtuais.status;
+        const observacao = req.body.observacao ?? dadosAtuais.observacao;
+
+        await pool.query(
+            'UPDATE agendamentos SET data_hora = ?, cliente_id = ?, servico_id = ?, status = ?, observacao = ?, updatedAt = NOW() WHERE id = ?',
+            [data_hora, cliente_id, servico_id, status, observacao, id]
+        );
+
         const [agendamento] = await pool.query(
             `SELECT a.id, a.data_hora, a.status, a.observacao, a.createdAt, a.updatedAt,
-                    c.id AS cliente_id, c.nome AS cliente_nome,
-                    s.id AS servico_id, s.nome AS servico_nome,
+                    c.id AS cliente_id, c.nome AS cliente_nome, c.email AS cliente_email, c.telefone AS cliente_telefone,
+                    s.id AS servico_id, s.nome AS servico_nome, s.preco AS servico_preco,
                     p.id AS profissional_id, p.nome AS profissional_nome
              FROM agendamentos a
              JOIN clientes c ON a.cliente_id = c.id
@@ -90,7 +100,8 @@ exports.listarMeus = async (req, res) => {
         const [rows] = await pool.query(
             `SELECT a.id, a.data_hora, a.status, a.observacao, a.createdAt, a.updatedAt,
                     c.id AS cliente_id, c.nome AS cliente_nome, c.email AS cliente_email, c.telefone AS cliente_telefone,
-                    s.id AS servico_id, s.nome AS servico_nome, s.preco AS servico_preco
+                    s.id AS servico_id, s.nome AS servico_nome, s.preco AS servico_preco,
+                    p.id AS profissional_id, p.nome AS profissional_nome
              FROM agendamentos a
              JOIN clientes c ON a.cliente_id = c.id
              JOIN servicos s ON a.servico_id = s.id

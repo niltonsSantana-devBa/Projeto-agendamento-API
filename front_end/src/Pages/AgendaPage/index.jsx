@@ -64,7 +64,8 @@ function AgendaPage() {
               boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
               borderLeft: `5px solid ${
                 ag.status === 'confirmado' ? '#27ae60' :
-                ag.status === 'cancelado' ? '#e74c3c' : '#f39c12'
+                ag.status === 'cancelado' ? '#e74c3c' :
+                ag.status === 'reagendado' ? '#8e44ad' : '#f39c12'
               }`
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -88,13 +89,16 @@ function AgendaPage() {
                     borderRadius: '12px', fontSize: '12px', fontWeight: 'bold',
                     backgroundColor:
                       ag.status === 'confirmado' ? '#d5f5e3' :
-                      ag.status === 'cancelado' ? '#fadbd8' : '#fef9e7',
+                      ag.status === 'cancelado' ? '#fadbd8' :
+                      ag.status === 'reagendado' ? '#e8daef' : '#fef9e7',
                     color:
                       ag.status === 'confirmado' ? '#1e8449' :
-                      ag.status === 'cancelado' ? '#c0392b' : '#b7950b'
+                      ag.status === 'cancelado' ? '#c0392b' :
+                      ag.status === 'reagendado' ? '#6c3483' : '#b7950b'
                   }}>
                     {ag.status === 'confirmado' ? 'Confirmado' :
-                     ag.status === 'cancelado' ? 'Cancelado' : 'Pendente'}
+                     ag.status === 'cancelado' ? 'Cancelado' :
+                     ag.status === 'reagendado' ? 'Reagendado' : 'Pendente'}
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: '5px' }}>

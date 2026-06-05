@@ -3,12 +3,12 @@ import { useForm } from 'react-hook-form';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '../../services/api';
-import '../ClientesPage/style.css';
 
 function ServicosPage() {
   const [servicos, setServicos] = useState([]);
   const [profissionais, setProfissionais] = useState([]);
-  const { register, handleSubmit, reset } = useForm();
+  const [editando, setEditando] = useState(null);
+  const { register, handleSubmit, reset, setValue } = useForm();
 
   const carregarDados = async () => {
     try {
@@ -23,26 +23,56 @@ function ServicosPage() {
     }
   };
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
+  useEffect(() => { carregarDados(); }, []);
 
   const onSubmit = async (data) => {
     try {
-      await api.post('/servicos', {
+      const payload = {
         nome: data.nome,
-        descricao: data.descricao,
-        preco: data.preco,
-        duracao_min: Number(data.duracao_min),
+        descricao: data.descricao || null,
+        preco: parseFloat(data.preco),
+        duracao_min: parseInt(data.duracao_min) || 60,
         profissional_id: Number(data.profissional_id)
-      });
-      toast.success("Serviço cadastrado com sucesso!");
+      };
+
+      if (editando) {
+        await api.put(`/servicos/${editando}`, payload);
+        toast.success("Serviço atualizado!");
+      } else {
+        await api.post('/servicos', payload);
+        toast.success("Serviço cadastrado!");
+      }
       reset();
+      setEditando(null);
       carregarDados();
     } catch (error) {
-      console.error("Erro ao cadastrar serviço", error);
-      toast.error("Erro ao cadastrar. Verifique os dados.");
+      toast.error(error.response?.data?.error || "Erro ao salvar");
     }
+  };
+
+  const editar = (s) => {
+    setEditando(s.id);
+    setValue('nome', s.nome);
+    setValue('descricao', s.descricao || '');
+    setValue('preco', s.preco);
+    setValue('duracao_min', s.duracao_min);
+    setValue('profissional_id', s.profissional_id);
+  };
+
+  const excluir = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir este serviço?')) return;
+    try {
+      await api.delete(`/servicos/${id}`);
+      toast.success("Serviço excluído!");
+      carregarDados();
+    } catch (error) {
+      toast.error("Erro ao excluir serviço");
+    }
+  };
+
+  const cancelarEdicao = () => {
+    setEditando(null);
+    reset();
   };
 
   return (
@@ -51,7 +81,7 @@ function ServicosPage() {
       <h2>Gerenciar Serviços</h2>
 
       <div className="form-container">
-        <h3>Cadastrar Novo Serviço</h3>
+        <h3>{editando ? 'Editar Serviço' : 'Cadastrar Novo Serviço'}</h3>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="input-group">
             <label>Nome do Serviço</label>
@@ -67,7 +97,7 @@ function ServicosPage() {
           </div>
           <div className="input-group">
             <label>Duração (minutos)</label>
-            <input type="number" {...register('duracao_min', { required: true })} placeholder="Ex: 60" defaultValue={60} />
+            <input type="number" {...register('duracao_min', { required: true })} placeholder="Ex: 60" />
           </div>
           <div className="input-group">
             <label>Profissional</label>
@@ -76,7 +106,16 @@ function ServicosPage() {
               {profissionais.map(p => <option key={p.id} value={p.id}>{p.nome} - {p.especialidade}</option>)}
             </select>
           </div>
-          <button type="submit" className="btn-salvar">Salvar Serviço</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="submit" className="btn-salvar">
+              {editando ? 'Atualizar' : 'Salvar Serviço'}
+            </button>
+            {editando && (
+              <button type="button" onClick={cancelarEdicao} className="btn-cancelar">
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
@@ -91,6 +130,7 @@ function ServicosPage() {
               <th>Preço</th>
               <th>Duração</th>
               <th>Profissional</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -102,11 +142,15 @@ function ServicosPage() {
                 <td>R$ {parseFloat(s.preco).toFixed(2)}</td>
                 <td>{s.duracao_min}min</td>
                 <td>{s.profissional_nome || '-'}</td>
+                <td>
+                  <button onClick={() => editar(s)} className="btn-editar" style={{ marginRight: '6px' }}>Editar</button>
+                  <button onClick={() => excluir(s.id)} className="btn-cancelar">Excluir</button>
+                </td>
               </tr>
             ))}
             {servicos.length === 0 && (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center' }}>Nenhum serviço cadastrado.</td>
+                <td colSpan="7" style={{ textAlign: 'center' }}>Nenhum serviço cadastrado.</td>
               </tr>
             )}
           </tbody>

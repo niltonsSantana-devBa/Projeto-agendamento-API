@@ -29,14 +29,23 @@ exports.criar = async (req, res) => {
 exports.atualizar = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, especialidade, telefone, ativo } = req.body;
-        const [result] = await pool.query(
-            'UPDATE profissionais SET nome = ?, especialidade = ?, telefone = ?, ativo = ?, updatedAt = NOW() WHERE id = ?',
-            [nome, especialidade, telefone || null, ativo !== undefined ? ativo : 1, id]
-        );
-        if (result.affectedRows === 0) {
+
+        const [atual] = await pool.query('SELECT * FROM profissionais WHERE id = ?', [id]);
+        if (atual.length === 0) {
             return res.status(404).json({ error: 'Profissional não encontrado' });
         }
+
+        const dadosAtuais = atual[0];
+        const nome = req.body.nome ?? dadosAtuais.nome;
+        const especialidade = req.body.especialidade ?? dadosAtuais.especialidade;
+        const telefone = req.body.telefone ?? dadosAtuais.telefone;
+        const ativo = req.body.ativo !== undefined ? req.body.ativo : dadosAtuais.ativo;
+
+        await pool.query(
+            'UPDATE profissionais SET nome = ?, especialidade = ?, telefone = ?, ativo = ?, updatedAt = NOW() WHERE id = ?',
+            [nome, especialidade, telefone, ativo, id]
+        );
+
         const [profissional] = await pool.query('SELECT * FROM profissionais WHERE id = ?', [id]);
         res.json(profissional[0]);
     } catch (error) {

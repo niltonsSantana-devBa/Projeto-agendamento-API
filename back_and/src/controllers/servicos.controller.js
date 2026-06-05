@@ -68,14 +68,23 @@ exports.criar = async (req, res) => {
 exports.atualizar = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, descricao, preco, duracao_min, profissional_id } = req.body;
-        const [result] = await pool.query(
-            'UPDATE servicos SET nome = ?, descricao = ?, preco = ?, duracao_min = ?, profissional_id = ?, updatedAt = NOW() WHERE id = ?',
-            [nome, descricao || null, preco, duracao_min || 60, profissional_id, id]
-        );
-        if (result.affectedRows === 0) {
+
+        const [atual] = await pool.query('SELECT * FROM servicos WHERE id = ?', [id]);
+        if (atual.length === 0) {
             return res.status(404).json({ error: 'Serviço não encontrado' });
         }
+
+        const dadosAtuais = atual[0];
+        const nome = req.body.nome ?? dadosAtuais.nome;
+        const descricao = req.body.descricao ?? dadosAtuais.descricao;
+        const preco = req.body.preco ?? dadosAtuais.preco;
+        const duracao_min = req.body.duracao_min ?? dadosAtuais.duracao_min;
+        const profissional_id = req.body.profissional_id ?? dadosAtuais.profissional_id;
+
+        await pool.query(
+            'UPDATE servicos SET nome = ?, descricao = ?, preco = ?, duracao_min = ?, profissional_id = ?, updatedAt = NOW() WHERE id = ?',
+            [nome, descricao, preco, duracao_min, profissional_id, id]
+        );
         const [servico] = await pool.query(
             `SELECT s.*, p.nome AS profissional_nome
              FROM servicos s

@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '../../services/api';
-import './style.css';
 
 function AgendamentosPage() {
   const [agendamentos, setAgendamentos] = useState([]);
@@ -51,6 +50,22 @@ function AgendamentosPage() {
     }
   };
 
+  const excluir = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir este agendamento?')) return;
+    try {
+      await api.delete(`/agendamentos/${id}`);
+      toast.success("Agendamento excluído!");
+      carregarDados();
+    } catch (error) {
+      toast.error("Erro ao excluir agendamento");
+    }
+  };
+
+  const statusLabel = (s) => {
+    const labels = { pendente: 'Pendente', confirmado: 'Confirmado', reagendado: 'Reagendado', cancelado: 'Cancelado' };
+    return labels[s] || s;
+  };
+
   return (
     <div className="page-container">
       <ToastContainer position="top-right" autoClose={3000} />
@@ -86,6 +101,7 @@ function AgendamentosPage() {
             <select {...register('status')}>
               <option value="pendente">Pendente</option>
               <option value="confirmado">Confirmado</option>
+              <option value="reagendado">Reagendado</option>
               <option value="cancelado">Cancelado</option>
             </select>
           </div>
@@ -104,6 +120,7 @@ function AgendamentosPage() {
               <th>Profissional</th>
               <th>Serviço</th>
               <th>Status</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -114,12 +131,15 @@ function AgendamentosPage() {
                 <td>{agenda.cliente_nome || 'N/A'}</td>
                 <td>{agenda.profissional_nome || 'N/A'}</td>
                 <td>{agenda.servico_nome || 'N/A'}</td>
-                <td>{agenda.status}</td>
+                <td>{statusLabel(agenda.status)}</td>
+                <td>
+                  <button onClick={() => excluir(agenda.id)} className="btn-cancelar">Excluir</button>
+                </td>
               </tr>
             ))}
             {agendamentos.length === 0 && (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center' }}>Nenhum agendamento cadastrado.</td>
+                <td colSpan="7" style={{ textAlign: 'center' }}>Nenhum agendamento cadastrado.</td>
               </tr>
             )}
           </tbody>

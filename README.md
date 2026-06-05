@@ -57,14 +57,14 @@ O sistema é voltado para escritórios de arquitetura que precisam gerenciar:
 - Agendamentos são criados com status "pendente" para aprovação do administrador
 
 ### Para Arquitetos (com auto-cadastro)
-- **Auto-cadastro** (`/registrar-arquiteto`): criar conta com nome, email, senha e especialidade
+- **Auto-cadastro** (`/registrar-arquiteto`): criar conta com nome, email, senha e especialidade, já loga automaticamente
 - **Gerenciar Serviços** (`/meus-servicos`): criar, editar e excluir seus próprios serviços
-- **Consultar Agendamentos** (via API): ver agendamentos recebidos com nome, email e telefone do cliente para contato
+- **Meus Agendamentos** (`/meus-agendamentos`): visualizar agendamentos recebidos com nome, email e telefone do cliente, podendo **Aceitar** (confirmar), **Recusar** (cancelar) ou **Sugerir novo horário** (reagendar)
 
 ### Para Administradores (login protegido)
 - **Dashboard** (`/`): visão geral com totais de clientes, profissionais, serviços e agendamentos
-- **Agenda Diária** (`/agenda`): visualização dos agendamentos do dia com cards por status
-- **CRUD Completo**: gerenciar clientes, profissionais, serviços e agendamentos
+- **Agenda Diária** (`/agenda`): visualização dos agendamentos do dia com cards por status (inclui status `reagendado` em roxo)
+- **CRUD Completo**: gerenciar clientes, profissionais, serviços e agendamentos com **editar e excluir** em todas as páginas
 - **Confirmação/Cancelamento**: alterar status dos agendamentos diretamente pela interface
 
 ---
@@ -156,6 +156,8 @@ Projeto-agendamento-API/
 │   │   │   │   └── index.jsx  # Auto-cadastro de arquitetos
 │   │   │   ├── MeusServicosPage/      # ★ PÁGINA DO ARQUITETO
 │   │   │   │   └── index.jsx  # CRUD de serviços do arquiteto logado
+│   │   │   ├── MeusAgendamentosPage/   # ★ PÁGINA DO ARQUITETO
+│   │   │   │   └── index.jsx  # Aceitar/recusar/sugerir horário nos agendamentos
 │   │   │   ├── ArquitetosPage/    # ★ PÁGINA PÚBLICA
 │   │   │   │   └── index.jsx  # Vitrine de arquitetos e serviços
 │   │   │   ├── ClientesPage/
@@ -294,7 +296,7 @@ servicos (1) ─────────────── (N) agendamentos
 | cliente_id | INT | ✅ | FK → clientes.id |
 | servico_id | INT | ✅ | FK → servicos.id |
 | data_hora | DATETIME | ✅ | Data e hora do agendamento |
-| status | VARCHAR(50) | ❌ | `pendente`, `confirmado` ou `cancelado` (padrão: `pendente`) |
+| status | VARCHAR(50) | ❌ | `pendente`, `confirmado`, `cancelado` ou `reagendado` (padrão: `pendente`) |
 | observacao | TEXT | ❌ | Observações opcionais |
 | createdAt | DATETIME | ✅ (auto) | Data de criação |
 | updatedAt | DATETIME | ✅ (auto) | Data de atualização |
@@ -359,7 +361,8 @@ O backend roda na porta `3001` e expõe os seguintes endpoints (prefixo `/api`):
 | `PUT` | `/api/agendamentos/:id` | Atualiza agendamento | — | ✅ |
 | `DELETE` | `/api/agendamentos/:id` | Remove agendamento | — | ✅ |
 
-> **Nota:** O profissional é determinado através do serviço (relacionamento `servicos.profissional_id`). O endpoint `GET /api/agendamentos/meus` retorna os dados de contato do cliente (`cliente_nome`, `cliente_email`, `cliente_telefone`) para que o arquiteto possa entrar em contato.
+> **Nota:** O profissional é determinado através do serviço (relacionamento `servicos.profissional_id`). O endpoint `GET /api/agendamentos/meus` retorna os dados de contato do cliente (`cliente_nome`, `cliente_email`, `cliente_telefone`) para que o arquiteto possa entrar em contato.  
+> Todos os endpoints `PUT` utilizam **atualização parcial** (campos não enviados mantêm o valor atual no banco), permitindo alterar apenas o status sem perder os demais dados.
 
 ---
 
@@ -367,22 +370,22 @@ O backend roda na porta `3001` e expõe os seguintes endpoints (prefixo `/api`):
 
 ### Componentes Reutilizáveis (`src/components/`)
 
-#### `Header` (`components/Header/index.jsx`)
-O cabeçalho aparece no topo de todas as páginas. Contém o nome "AgendaFácil" à esquerda e os links de navegação à direita. O Header é sensível ao estado de autenticação e ao perfil do usuário:
+#### `Header` (`components/Header/index.jsx`) — Sidebar Lateral
+O Header foi transformado em uma **sidebar fixa à esquerda** (260px), com fundo escuro gradiente e ícones ao lado de cada link. É sensível ao estado de autenticação e perfil do usuário:
 
-- **Visitante (não logado):** Arquitetos, Agendar, Cadastre-se, Login
-- **Arquiteto (logado):** Arquitetos, Agendar, Meus Serviços, [nome] + Sair
-- **Administrador (logado):** Arquitetos, Agendar, Dashboard, Agenda, Clientes, Profissionais, Serviços, Agendamentos, [nome] + Sair
+- **Visitante (não logado):** Arquitetos 🏛️, Agendar 📝, Cadastre-se 📝, Login 🔑
+- **Arquiteto (logado):** Seção "MEU PAINEL" → Meus Serviços ⚡, Meus Agendamentos 📋; mais links públicos; avatar com iniciais + Sair
+- **Administrador (logado):** Seção "ADMINISTRATIVO" → Dashboard 📊, Agenda 📅, Clientes 👥, Profissionais 👷, Serviços ⚡, Agendamentos 📋; mais links públicos; avatar + Sair
 
-Usa o componente `NavLink` do React Router DOM para destacar automaticamente o link da página ativa. O Header escuta o evento customizado `login` (disparado pelo LoginPage e RegistrarArquitetoPage) para atualizar os links sem recarregar a página.
+Usa `NavLink` do React Router DOM com destaque amarelo (`#f39c12`) na página ativa. O componente escuta os eventos `storage` (cross-tab) e `login` (mesma aba) para atualizar os links sem recarregar a página.
 
 #### `Footer` (`components/Footer/index.jsx`)
-Rodapé simples exibido na base de todas as páginas com informações de copyright.
+Rodapé simples com borda superior sutil, exibido na base do conteúdo principal com informações de copyright.
 
 ### Configuração de Rotas (`src/App.jsx`)
 O arquivo `App.jsx` é o coração do frontend. Ele:
 1. Envolve toda a aplicação no `BrowserRouter` (do React Router DOM).
-2. Define o layout geral: `<Header>` → `<main>` com as rotas → `<Footer>`.
+2. Define o layout geral em grid: `<Sidebar>` (esquerda) → `<main>` + `<Footer>` (direita).
 3. Mapeia cada URL para o componente de página correspondente. Rotas autenticadas são protegidas por `<PrivateRoute>` (verifica token JWT no localStorage):
    - `/` → `<HomePage />` (autenticado — admin)
    - `/arquitetos` → `<ArquitetosPage />` (público)
@@ -390,6 +393,7 @@ O arquivo `App.jsx` é o coração do frontend. Ele:
    - `/registrar-arquiteto` → `<RegistrarArquitetoPage />` (público)
    - `/login` → `<LoginPage />` (público)
    - `/meus-servicos` → `<MeusServicosPage />` (autenticado — arquiteto)
+   - `/meus-agendamentos` → `<MeusAgendamentosPage />` (autenticado — arquiteto)
    - `/agenda` → `<AgendaPage />` (autenticado — admin)
    - `/clientes` → `<ClientesPage />` (autenticado — admin)
    - `/profissionais` → `<ProfissionaisPage />` (autenticado — admin)
@@ -415,18 +419,18 @@ Ao ser renderizada, a página dispara 4 requisições `GET` simultâneas para a 
 
 #### `ClientesPage` (rota `/clientes`)
 Dividida em duas seções:
-1. **Formulário de Cadastro**: Campos de Nome, E-mail e Telefone. Gerenciado pelo `react-hook-form`. Ao submeter, faz um `POST /clientes` e recarrega a lista automaticamente.
-2. **Tabela de Clientes**: Lista todos os clientes em uma tabela com colunas ID, Nome, Email e Telefone. Puxada via `GET /clientes` ao carregar a página.
+1. **Formulário de Cadastro/Edição**: Campos de Nome, E-mail e Telefone. Gerenciado pelo `react-hook-form`. Suporta **modo de edição** (botão Editar na tabela preenche o formulário) e **modo de cadastro**.
+2. **Tabela de Clientes**: Lista todos os clientes com colunas ID, Nome, Email, Telefone e **Ações** (botões Editar e Excluir com confirmação).
 
 #### `ProfissionaisPage` (rota `/profissionais`)
 Dividida em duas seções:
-1. **Formulário de Cadastro**: Campos de Nome e Especialidade. Ao submeter, faz um `POST /profissionais` e recarrega a lista.
-2. **Tabela de Profissionais**: Lista todos os profissionais cadastrados com colunas ID, Nome e Especialidade.
+1. **Formulário de Cadastro/Edição**: Campos de Nome, Especialidade, Telefone e Ativo (Sim/Não). Suporta modo edição.
+2. **Tabela de Profissionais**: Lista todos os profissionais com colunas ID, Nome, Especialidade, Telefone, Ativo e **Ações** (Editar/Excluir). Ao excluir, avisa que **todos os serviços e agendamentos vinculados também serão removidos** (em cascata pelo banco).
 
 #### `ServicosPage` (rota `/servicos`)
 Dividida em duas seções:
-1. **Formulário de Cadastro**: Campos de Nome, Descrição e Preço. Ao submeter, faz um `POST /servicos` e recarrega a lista.
-2. **Tabela de Serviços**: Lista todos os serviços cadastrados com colunas ID, Nome, Descrição e Preço.
+1. **Formulário de Cadastro/Edição**: Campos de Nome, Descrição, Preço, Duração e Profissional (select). Suporta modo edição.
+2. **Tabela de Serviços**: Lista todos os serviços com colunas ID, Nome, Descrição, Preço, Duração, Profissional e **Ações** (Editar/Excluir).
 
 #### `LoginPage` (rota `/login`) — Página Pública
 Formulário de autenticação com email e senha. Ao fazer login:
@@ -455,13 +459,23 @@ Painel do arquiteto para gerenciar seus próprios serviços. Funcionalidades:
 - **Exclusão**: clica em "Excluir" com confirmação via `window.confirm`
 - Os dados são carregados via `GET /api/servicos/meus` (filtrado pelo token JWT — apenas serviços onde `profissionais.usuario_id` coincide com o usuário logado)
 
+#### `MeusAgendamentosPage` (rota `/meus-agendamentos`) — Página Autenticada (Arquiteto)
+Painel do arquiteto para gerenciar seus agendamentos recebidos. Visual similar à AgendaPage do admin:
+- **Filtro por status**: Todos, Pendentes, Confirmados, Reagendados, Cancelados
+- **Cards** com borda lateral colorida, exibindo nome/email/telefone do cliente, serviço, valor e observações
+- **Ações disponíveis**:
+  - ✅ **Aceitar**: status → `confirmado` (arquiteto aceita a data/hora proposta)
+  - ❌ **Recusar**: status → `cancelado` (arquiteto recusa)
+  - 🔄 **Sugerir Horário**: abre um datetime picker, arquiteto escolhe nova data/hora, status → `reagendado` (roxo)
+- Dados carregados via `GET /api/agendamentos/meus` (filtrado pelo token JWT — apenas agendamentos dos serviços do arquiteto logado)
+
 #### `AgendaPage` (rota `/agenda`) — Página Administrativa
 Visualização dos agendamentos do dia com filtro por data. Funcionalidades:
 - Input de data para selecionar o dia
-- Cards coloridos por status (verde=confirmado, vermelho=cancelado, amarelo=pendente)
-- Botões para confirmar ou cancelar agendamentos diretamente
+- Cards coloridos por status: 🟢 verde=confirmado, 🔴 vermelho=cancelado, 🟡 amarelo=pendente, 🟣 roxo=reagendado
+- Botões para confirmar ou cancelar agendamentos pendentes
 - Dados carregados via `GET /api/agendamentos?data=YYYY-MM-DD`
-- Atualização de status via `PUT /api/agendamentos/:id`
+- Atualização de status via `PUT /api/agendamentos/:id` (com suporte a atualização parcial)
 
 #### `ArquitetosPage` (rota `/arquitetos`) — Página Pública
 Vitrine pública que lista todos os arquitetos (profissionais) cadastrados, exibindo seus nomes e especialidades. Abaixo de cada arquiteto, mostra os serviços disponíveis. Cada serviço tem um botão **"Agendar"** que leva o cliente direto para `/agendar?profissionalId=X&servicoId=Y`, pré-selecionando o arquiteto e o serviço.
@@ -488,8 +502,8 @@ Fluxo ao submeter:
 
 #### `AgendamentosPage` (rota `/agendamentos`)
 Dividida em duas seções:
-1. **Formulário de Agendamento**: Ao carregar, busca dados de Clientes, Profissionais e Serviços para popular os `<select>` (dropdowns). O usuário escolhe o cliente, o profissional, o serviço, a data/hora e o status. Ao submeter, faz um `POST /agendamentos`.
-2. **Tabela de Agendamentos**: Lista todos os agendamentos com as informações de cliente, profissional e serviço já expandidas (não mostra apenas o ID, mas o nome real de cada um). Os administradores podem ver os agendamentos criados pelo fluxo público e alterar o status para "confirmado" ou "cancelado".
+1. **Formulário de Agendamento**: Ao carregar, busca dados de Clientes, Profissionais e Serviços para popular os `<select>`. O usuário escolhe o cliente, o serviço, a data/hora, observação e o status (Pendente, Confirmado, Reagendado, Cancelado). Ao submeter, faz um `POST /agendamentos`.
+2. **Tabela de Agendamentos**: Lista todos os agendamentos com as informações de cliente, profissional e serviço já expandidas (nomes reais via JOIN). Cada linha possui botão **Excluir** com confirmação.
 
 ---
 

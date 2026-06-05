@@ -3,11 +3,11 @@ import { useForm } from 'react-hook-form';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '../../services/api';
-import './style.css';
 
 function ClientesPage() {
   const [clientes, setClientes] = useState([]);
-  const { register, handleSubmit, reset } = useForm();
+  const [editando, setEditando] = useState(null);
+  const { register, handleSubmit, reset, setValue } = useForm();
 
   const carregarClientes = async () => {
     try {
@@ -18,20 +18,48 @@ function ClientesPage() {
     }
   };
 
-  useEffect(() => {
-    carregarClientes();
-  }, []);
+  useEffect(() => { carregarClientes(); }, []);
 
   const onSubmit = async (data) => {
     try {
-      await api.post('/clientes', data);
-      toast.success("Cliente cadastrado com sucesso!");
+      const payload = { nome: data.nome, email: data.email, telefone: data.telefone || null };
+
+      if (editando) {
+        await api.put(`/clientes/${editando}`, payload);
+        toast.success("Cliente atualizado!");
+      } else {
+        await api.post('/clientes', payload);
+        toast.success("Cliente cadastrado!");
+      }
       reset();
+      setEditando(null);
       carregarClientes();
     } catch (error) {
-      console.error("Erro ao cadastrar cliente", error);
-      toast.error("Erro ao cadastrar. Verifique os dados e tente novamente.");
+      toast.error(error.response?.data?.error || "Erro ao salvar");
     }
+  };
+
+  const editar = (c) => {
+    setEditando(c.id);
+    setValue('nome', c.nome);
+    setValue('email', c.email);
+    setValue('telefone', c.telefone || '');
+  };
+
+  const excluir = async (id) => {
+    if (!window.confirm('Tem certeza que deseja excluir este cliente?')) return;
+    try {
+      await api.delete(`/clientes/${id}`);
+      toast.success("Cliente excluído!");
+      carregarClientes();
+    } catch (error) {
+      toast.error("Erro ao excluir cliente");
+    }
+  };
+
+  const cancelarEdicao = () => {
+    setEditando(null);
+    reset();
   };
 
   return (
@@ -40,7 +68,7 @@ function ClientesPage() {
       <h2>Gerenciar Clientes</h2>
       
       <div className="form-container">
-        <h3>Cadastrar Novo Cliente</h3>
+        <h3>{editando ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}</h3>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="input-group">
             <label>Nome Completo</label>
@@ -54,7 +82,16 @@ function ClientesPage() {
             <label>Telefone</label>
             <input {...register('telefone')} placeholder="(11) 99999-9999" />
           </div>
-          <button type="submit" className="btn-salvar">Salvar Cliente</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="submit" className="btn-salvar">
+              {editando ? 'Atualizar' : 'Salvar Cliente'}
+            </button>
+            {editando && (
+              <button type="button" onClick={cancelarEdicao} className="btn-cancelar">
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
@@ -67,6 +104,7 @@ function ClientesPage() {
               <th>Nome</th>
               <th>Email</th>
               <th>Telefone</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -76,11 +114,15 @@ function ClientesPage() {
                 <td>{cliente.nome}</td>
                 <td>{cliente.email}</td>
                 <td>{cliente.telefone || '-'}</td>
+                <td>
+                  <button onClick={() => editar(cliente)} className="btn-editar" style={{ marginRight: '6px' }}>Editar</button>
+                  <button onClick={() => excluir(cliente.id)} className="btn-cancelar">Excluir</button>
+                </td>
               </tr>
             ))}
             {clientes.length === 0 && (
               <tr>
-                <td colSpan="4" style={{ textAlign: 'center' }}>Nenhum cliente cadastrado.</td>
+                <td colSpan="5" style={{ textAlign: 'center' }}>Nenhum cliente cadastrado.</td>
               </tr>
             )}
           </tbody>

@@ -42,14 +42,22 @@ exports.criar = async (req, res) => {
 exports.atualizar = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, email, telefone } = req.body;
-        const [result] = await pool.query(
-            'UPDATE clientes SET nome = ?, email = ?, telefone = ?, updatedAt = NOW() WHERE id = ?',
-            [nome, email, telefone || null, id]
-        );
-        if (result.affectedRows === 0) {
+
+        const [atual] = await pool.query('SELECT * FROM clientes WHERE id = ?', [id]);
+        if (atual.length === 0) {
             return res.status(404).json({ error: 'Cliente não encontrado' });
         }
+
+        const dadosAtuais = atual[0];
+        const nome = req.body.nome ?? dadosAtuais.nome;
+        const email = req.body.email ?? dadosAtuais.email;
+        const telefone = req.body.telefone ?? dadosAtuais.telefone;
+
+        await pool.query(
+            'UPDATE clientes SET nome = ?, email = ?, telefone = ?, updatedAt = NOW() WHERE id = ?',
+            [nome, email, telefone, id]
+        );
+
         const [cliente] = await pool.query('SELECT * FROM clientes WHERE id = ?', [id]);
         res.json(cliente[0]);
     } catch (error) {

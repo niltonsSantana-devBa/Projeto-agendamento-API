@@ -3,11 +3,11 @@ import { useForm } from 'react-hook-form';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from '../../services/api';
-import '../ClientesPage/style.css';
 
 function ProfissionaisPage() {
   const [profissionais, setProfissionais] = useState([]);
-  const { register, handleSubmit, reset } = useForm();
+  const [editando, setEditando] = useState(null);
+  const { register, handleSubmit, reset, setValue } = useForm();
 
   const carregarProfissionais = async () => {
     try {
@@ -18,25 +18,54 @@ function ProfissionaisPage() {
     }
   };
 
-  useEffect(() => {
-    carregarProfissionais();
-  }, []);
+  useEffect(() => { carregarProfissionais(); }, []);
 
   const onSubmit = async (data) => {
     try {
-      await api.post('/profissionais', {
+      const payload = {
         nome: data.nome,
         especialidade: data.especialidade,
         telefone: data.telefone || null,
-        ativo: data.ativo !== undefined ? (data.ativo === 'true' || data.ativo === true ? 1 : 0) : 1
-      });
-      toast.success("Profissional cadastrado com sucesso!");
+        ativo: data.ativo === 'true' || data.ativo === true ? 1 : 0
+      };
+
+      if (editando) {
+        await api.put(`/profissionais/${editando}`, payload);
+        toast.success("Profissional atualizado!");
+      } else {
+        await api.post('/profissionais', payload);
+        toast.success("Profissional cadastrado!");
+      }
       reset();
+      setEditando(null);
       carregarProfissionais();
     } catch (error) {
-      console.error("Erro ao cadastrar profissional", error);
-      toast.error("Erro ao cadastrar. Verifique os dados.");
+      toast.error(error.response?.data?.error || "Erro ao salvar");
     }
+  };
+
+  const editar = (p) => {
+    setEditando(p.id);
+    setValue('nome', p.nome);
+    setValue('especialidade', p.especialidade);
+    setValue('telefone', p.telefone || '');
+    setValue('ativo', p.ativo ? 'true' : 'false');
+  };
+
+  const excluir = async (id) => {
+    if (!window.confirm('Tem certeza? Excluir este profissional também removerá TODOS os serviços e agendamentos vinculados a ele.')) return;
+    try {
+      await api.delete(`/profissionais/${id}`);
+      toast.success("Profissional excluído!");
+      carregarProfissionais();
+    } catch (error) {
+      toast.error("Erro ao excluir profissional");
+    }
+  };
+
+  const cancelarEdicao = () => {
+    setEditando(null);
+    reset({ ativo: 'true' });
   };
 
   return (
@@ -45,7 +74,7 @@ function ProfissionaisPage() {
       <h2>Gerenciar Profissionais</h2>
 
       <div className="form-container">
-        <h3>Cadastrar Novo Profissional</h3>
+        <h3>{editando ? 'Editar Profissional' : 'Cadastrar Novo Profissional'}</h3>
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="input-group">
             <label>Nome Completo</label>
@@ -61,12 +90,21 @@ function ProfissionaisPage() {
           </div>
           <div className="input-group">
             <label>Ativo</label>
-            <select {...register('ativo')} defaultValue="true">
+            <select {...register('ativo')}>
               <option value="true">Sim</option>
               <option value="false">Não</option>
             </select>
           </div>
-          <button type="submit" className="btn-salvar">Salvar Profissional</button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="submit" className="btn-salvar">
+              {editando ? 'Atualizar' : 'Salvar Profissional'}
+            </button>
+            {editando && (
+              <button type="button" onClick={cancelarEdicao} className="btn-cancelar">
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
@@ -80,6 +118,7 @@ function ProfissionaisPage() {
               <th>Especialidade</th>
               <th>Telefone</th>
               <th>Ativo</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -90,11 +129,15 @@ function ProfissionaisPage() {
                 <td>{p.especialidade}</td>
                 <td>{p.telefone || '-'}</td>
                 <td>{p.ativo ? 'Sim' : 'Não'}</td>
+                <td>
+                  <button onClick={() => editar(p)} className="btn-editar" style={{ marginRight: '6px' }}>Editar</button>
+                  <button onClick={() => excluir(p.id)} className="btn-cancelar">Excluir</button>
+                </td>
               </tr>
             ))}
             {profissionais.length === 0 && (
               <tr>
-                <td colSpan="5" style={{ textAlign: 'center' }}>Nenhum profissional cadastrado.</td>
+                <td colSpan="6" style={{ textAlign: 'center' }}>Nenhum profissional cadastrado.</td>
               </tr>
             )}
           </tbody>
