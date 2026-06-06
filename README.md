@@ -598,7 +598,7 @@ O projeto está preparado para deploy em duas plataformas gratuitas:
 3. Selecione o repositório e a pasta `back_and/`
 4. Railway detecta automaticamente Node.js e `npm start`
 5. Adicione um banco MySQL: **New** → **Database** → **MySQL**
-6. Nas variáveis de ambiente do backend, a Railway injeta automaticamente `DATABASE_URL` (o backend já está configurado para usá-la)
+6. A Railway injeta automaticamente MYSQL_URL no backend — o database.js já está configurado para usá-la. Se preferir usar variáveis individuais, configure DB_HOST, DB_USER, DB_PASSWORD e DB_DATABASE manualmente.
 7. Após o deploy, o Railway fornece uma URL como `https://backend-production.up.railway.app`
 
 ### Vercel (Frontend)
