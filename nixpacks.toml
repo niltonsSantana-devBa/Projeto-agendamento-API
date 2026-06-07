@@ -1,8 +1,10 @@
-﻿[phases.setup]
+﻿projectDirectory = "back_and"
+
+[phases.setup]
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmd = "cd back_and && npm install"
+cmd = "npm install"
 
 [start]
-cmd = "cd back_and && npm start"
+cmd = "npm start"
