@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
-cmd = "npm install"
+cmd = "cd back_and && npm install"
 
 [start]
-cmd = "npm start"
+cmd = "cd back_and && npm start"
